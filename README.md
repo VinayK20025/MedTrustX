@@ -43,6 +43,8 @@ MedTrustX is built on a modular, containerized architecture that ensures high av
 - Docker & Docker Compose
 - Python 3.10+
 - Terminal with `tmux` (for simulation)
+- [System Requirements](System_Requirements.md)
+- [Detailed Environment Setup Guide](VENV_Setup.md)
 
 ### 1. Clone and Initialize
 ```bash
