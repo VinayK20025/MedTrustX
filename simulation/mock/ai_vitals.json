@@ -1,0 +1,23 @@
+{
+  "patient_id": "e4b85c32-1f4a-4b9e-8c3d-2f9b1c7a8b6d",
+  "lookback_hours": 24,
+  "total_readings_analyzed": 144,
+  "anomalies_detected": 3,
+  "severity": "high",
+  "anomalies": [
+    {
+      "vital_type": "Heart rate",
+      "value": 128.5,
+      "expected_range": [60, 100],
+      "z_score": 3.2,
+      "timestamp": "2026-05-16T07:15:00Z"
+    },
+    {
+      "vital_type": "Systolic BP",
+      "value": 165.0,
+      "expected_range": [110, 140],
+      "z_score": 2.8,
+      "timestamp": "2026-05-16T07:15:00Z"
+    }
+  ]
+}

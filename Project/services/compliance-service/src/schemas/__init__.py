@@ -1,0 +1,1 @@
+"""MedTrustX Compliance Service — Schemas."""

@@ -1,0 +1,30 @@
+{
+  "cards": [
+    {
+      "summary": "High Risk: Major Drug Interaction Detected",
+      "detail": "Warfarin interacts with Aspirin (already on patient profile). Concomitant use significantly increases the risk of bleeding.",
+      "indicator": "critical",
+      "source": {
+        "label": "MedTrustX Clinical Decision Support",
+        "url": "https://medtrustx.com/cds/guidelines/warfarin-aspirin"
+      },
+      "suggestions": [
+        {
+          "label": "Cancel Warfarin Prescription",
+          "uuid": "sugg-1",
+          "actions": [
+            {
+              "type": "delete",
+              "description": "Remove Warfarin from active orders."
+            }
+          ]
+        },
+        {
+          "label": "Override with Clinical Justification",
+          "uuid": "sugg-2"
+        }
+      ]
+    }
+  ],
+  "severity": "MAJOR"
+}

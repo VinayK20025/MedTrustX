@@ -1,0 +1,1 @@
+"""MedTrustX Visitor Service — Schemas."""

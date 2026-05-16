@@ -1,0 +1,220 @@
+_format_version: "3.0"
+
+services:
+  - name: patient-service
+    url: http://patient-service:8018
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: patient-routes
+        paths:
+          - /api/patients
+          - /api/patients/(?<id>\w+)
+          - /api/patients/(?<id>\w+)/records
+          - /fhir/r4/Patient
+          - /fhir/r4/Patient/(?<id>\w+)
+        strip_path: false
+
+  - name: clinical-service
+    url: http://clinical-service:8019
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: clinical-routes
+        paths:
+          - /api/clinical/vitals
+          - /api/clinical/vitals/(?<id>\w+)
+          - /api/clinical/conditions
+          - /api/clinical/medications
+          - /api/clinical/(?<id>\w+)/orders
+          - /cds-services
+        strip_path: false
+
+  - name: appointment-service
+    url: http://appointment-service:8020
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: appointment-routes
+        paths:
+          - /api/appointments
+          - /api/schedules
+        strip_path: false
+
+  - name: ai-platform-service
+    url: http://ai-platform-service:8010
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: ai-routes
+        paths:
+          - /api/ai/predict-readmission
+          - /api/ai/vitals-anomaly
+          - /api/ai/analytics
+          - /api/ai/governance
+        strip_path: false
+
+  - name: audit-service
+    url: http://audit-service:8015
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: audit-routes
+        paths:
+          - /api/audit
+        strip_path: false
+
+  - name: compliance-service
+    url: http://compliance-service:8016
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: compliance-routes
+        paths:
+          - /api/compliance
+        strip_path: false
+
+  - name: consent-service
+    url: http://consent-service:8017
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: consent-routes
+        paths:
+          - /api/consent
+        strip_path: false
+
+  - name: zta-service
+    url: http://zta-service:8012
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: zta-routes
+        paths:
+          - /api/zta
+        strip_path: false
+
+  - name: iam-service
+    url: http://iam-service:8013
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: iam-routes
+        paths:
+          - /api/iam
+        strip_path: false
+
+  - name: pam-service
+    url: http://pam-service:8014
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: pam-routes
+        paths:
+          - /api/pam
+        strip_path: false
+
+  - name: rls-manager-service
+    url: http://rls-manager-service:8011
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: rls-routes
+        paths:
+          - /api/rls
+        strip_path: false
+
+  - name: kong-config-service
+    url: http://kong-config-service:8021
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: kong-config-routes
+        paths:
+          - /api/gateway/kong
+          - /api/v1/kong-gateway
+        strip_path: false
+
+  - name: api-composition-gateway
+    url: http://api-composition-gateway:8022
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: api-composition-routes
+        paths:
+          - /api/gateway/composition
+          - /api/gateway/discovery
+          - /api/v1/api-composition
+        strip_path: false
+
+  - name: graphql-federation-gateway
+    url: http://graphql-federation-gateway:8023
+    connect_timeout: 3000
+    read_timeout: 30000
+    write_timeout: 30000
+    retries: 3
+    routes:
+      - name: graphql-routes
+        paths:
+          - /graphql
+          - /api/graphql-gateway
+        strip_path: false
+
+plugins:
+  - name: rate-limiting
+    config:
+      minute: 1000
+      hour: 50000
+      policy: redis
+      redis_host: medtrust-redis
+      redis_password: redis_secret_2026
+      error_code: 429
+      error_message: "Rate limit exceeded"
+  - name: request-size-limiting
+    config:
+      allowed_payload_size: 10
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+  - name: response-ratelimiting
+    config:
+      limits:
+        sms:
+          minute: 10
+  - name: bot-detection
+    config:
+      allow: []
+      deny:
+        - googlebot
+        - semrush
+  - name: pqc-auth
+  - name: tenant-injector
+  - name: threat-logger
+  - name: waf-rules

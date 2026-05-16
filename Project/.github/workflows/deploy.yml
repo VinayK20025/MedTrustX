@@ -1,0 +1,41 @@
+name: MedTrustX Production Deploy
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      # Build and Push Core Services (Example: API Gateway)
+      - name: Build & Push API Gateway
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/api-gateway:latest ./services/api-gateway
+          docker push ghcr.io/${{ github.repository }}/api-gateway:latest
+
+      # Build and Push IAM Service
+      - name: Build & Push IAM Service
+        run: |
+          docker build -t ghcr.io/${{ github.repository }}/iam-service:latest ./services/iam-service
+          docker push ghcr.io/${{ github.repository }}/iam-service:latest
+
+      - name: Deploy to DigitalOcean via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DO_IP }}
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p ~/medtrustx
+            cd ~/medtrustx
+            # Pull latest docker-compose and images
+            docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+            docker-compose pull
+            docker-compose up -d

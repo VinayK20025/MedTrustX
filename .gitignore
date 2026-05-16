@@ -1,0 +1,15 @@
+.DS_Store
+Project.zip
+synthea-with-dependencies.jar
+.venv
+__pycache__/
+*.log
+output/
+Project/.DS_Store
+Project/.env
+Project/backends.log
+Project/backends_full.log
+Project/backends_new.log
+Project/frontend.log
+Project/gateway.log
+Project/iam.log

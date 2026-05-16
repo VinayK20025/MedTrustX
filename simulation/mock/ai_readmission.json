@@ -1,0 +1,18 @@
+{
+  "patient_id": "e4b85c32-1f4a-4b9e-8c3d-2f9b1c7a8b6d",
+  "risk_score": 0.735,
+  "risk_label": "high",
+  "confidence": 0.89,
+  "model_version": "v1.4.2-ensemble",
+  "features": {
+    "charlson_comorbidity_index": 4,
+    "num_prior_encounters_30d": 2,
+    "avg_systolic_bp": 142.5,
+    "age": 68
+  },
+  "shap_values": {
+    "charlson_comorbidity_index": "+0.18",
+    "num_prior_encounters_30d": "+0.12",
+    "avg_systolic_bp": "+0.08"
+  }
+}

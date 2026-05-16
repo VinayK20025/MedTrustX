@@ -1,0 +1,8 @@
+_format_version: "3.0"
+services:
+  - name: audit-service
+    routes:
+      - name: audit-api-routes
+        paths:
+          - /api/audit
+        strip_path: false

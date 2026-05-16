@@ -1,0 +1,1 @@
+"""MedTrustX ICU Service — Routes."""

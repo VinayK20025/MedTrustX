@@ -1,0 +1,105 @@
+'use client';
+import React, { useEffect } from 'react';
+import { useUIStore } from '@/store/ui.store';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { Skeleton } from '@/components/ui/Spinner';
+import { cn } from '@/utils/cn';
+import { AiModelsPanel } from '../components/AiModelsPanel';
+import { ModelDecisionsPanel } from '../components/ModelDecisionsPanel';
+import { ExplainabilityReportsPanel } from '../components/ExplainabilityReportsPanel';
+import { BiasMetricsPanel } from '../components/BiasMetricsPanel';
+import { GovernancePoliciesPanel } from '../components/GovernancePoliciesPanel';
+import { useAiGovernance } from '../hooks/useAiGovernance';
+import { Brain, Scale, Target, Activity, ShieldCheck, FileCheck } from 'lucide-react';
+
+interface AiKPI {
+  id: string; title: string; value: string | number;
+  status: 'normal' | 'warning' | 'critical' | 'success'; icon: React.ElementType; subtitle?: string;
+}
+
+function AiKPICard({ kpi }: { kpi: AiKPI }) {
+  const statusColors: Record<string, string> = {
+    success: 'border-success/20 hover:border-success/40', normal: 'border-white/[0.06] hover:border-white/[0.12]',
+    warning: 'border-warning/20 hover:border-warning/40', critical: 'border-emergency/20 hover:border-emergency/40 bg-emergency/[0.02]',
+  };
+  const valueColors: Record<string, string> = {
+    success: 'text-success-light', normal: 'text-white', warning: 'text-warning-light', critical: 'text-emergency-light',
+  };
+  const Icon = kpi.icon;
+  return (
+    <div className={cn('group relative overflow-hidden rounded-xl border bg-surface-light p-4 transition-all duration-300 shadow-glass-sm flex flex-col justify-between hover:-translate-y-0.5 hover:shadow-card-hover', statusColors[kpi.status])}>
+      <div className="flex items-start justify-between">
+        <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{kpi.title}</p>
+        <div className="p-2 rounded-lg bg-fuchsia-500/15"><Icon className="w-4 h-4 text-fuchsia-400" /></div>
+      </div>
+      <p className={cn('text-2xl font-black mt-2 font-mono', valueColors[kpi.status])}>{typeof kpi.value === 'number' ? kpi.value.toLocaleString() : kpi.value}</p>
+      {kpi.subtitle && <p className="text-[10px] text-gray-500 mt-1">{kpi.subtitle}</p>}
+    </div>
+  );
+}
+
+export const AiGovernanceDashboard: React.FC = () => {
+  const setPageMeta = useUIStore((s) => s.setPageMeta);
+  const { useModels } = useAiGovernance();
+  const modelsQuery = useModels();
+
+  useEffect(() => {
+    setPageMeta('AI Governance', 'Clinical AI oversight, bias detection, and explainability compliance');
+  }, [setPageMeta]);
+
+  if (modelsQuery.isLoading) {
+    return (
+      <div className="space-y-6 animate-fade-in max-w-[1600px]">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}
+        </div>
+      </div>
+    );
+  }
+
+  const kpis: AiKPI[] = [
+    { id: 'models', title: 'Managed Models', value: 18, status: 'success', icon: Brain, subtitle: 'Clinical & Operational' },
+    { id: 'decisions', title: 'AI Decisions', value: '1.2M', status: 'normal', icon: Activity, subtitle: 'Last 30 days' },
+    { id: 'bias', title: 'Bias Alerts', value: 0, status: 'success', icon: Scale, subtitle: 'Fairness drift detected' },
+    { id: 'accuracy', title: 'Avg Model Accuracy', value: '94.2%', status: 'success', icon: Target, subtitle: 'Against ground truth' },
+    { id: 'explain', title: 'Explainability Gen', value: '100%', status: 'success', icon: FileCheck, subtitle: 'SHAP / LIME coverage' },
+    { id: 'compliance', title: 'Policy Compliance', value: '98%', status: 'success', icon: ShieldCheck, subtitle: 'AI ethics board rules' },
+  ];
+
+  return (
+    <div className="space-y-5 animate-fade-in max-w-[1600px]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <Breadcrumbs items={[{ label: 'Governance' }, { label: 'AI Governance' }]} />
+        <div className="flex items-center gap-2 text-[11px] font-bold text-fuchsia-300 bg-fuchsia-500/10 px-4 py-2 rounded-lg border border-fuchsia-500/25">
+          <Brain className="w-3.5 h-3.5" />
+          ALGORITHM OVERSIGHT
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {kpis.map(kpi => <AiKPICard key={kpi.id} kpi={kpi} />)}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div className="xl:col-span-8 h-[450px]">
+          <AiModelsPanel />
+        </div>
+        <div className="xl:col-span-4 h-[450px]">
+          <GovernancePoliciesPanel />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5">
+        <div className="xl:col-span-4 h-[400px]">
+          <ModelDecisionsPanel />
+        </div>
+        <div className="xl:col-span-4 h-[400px]">
+          <ExplainabilityReportsPanel />
+        </div>
+        <div className="xl:col-span-4 h-[400px]">
+          <BiasMetricsPanel />
+        </div>
+      </div>
+    </div>
+  );
+};

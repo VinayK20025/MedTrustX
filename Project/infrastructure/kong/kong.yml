@@ -1,0 +1,311 @@
+# MedTrustX — Kong Declarative Configuration (DB-less mode)
+_format_version: "3.0"
+_transform: true
+
+services:
+  # ─── Gateway Service (main aggregator) ─────────────────────
+  - name: gateway
+    url: http://gateway-service:3000
+    routes:
+      - name: gateway-api
+        paths: ["/api"]
+        strip_path: false
+
+  # ─── Gateway Integration (health, dashboard, events) ──────
+  - name: gateway-integration
+    url: http://gateway-service:3000
+    routes:
+      - name: gateway-integration-api
+        paths: ["/api/v1/gateway"]
+        strip_path: false
+
+  # ─── Clinical Services (Python/FastAPI) ────────────────────
+  - name: patient-service
+    url: http://patient-service:8000
+    routes:
+      - name: patients-api
+        paths: ["/api/v1/patients"]
+        strip_path: false
+
+  - name: clinical-service
+    url: http://clinical-service:8000
+    routes:
+      - name: clinical-api
+        paths: ["/api/v1/clinical"]
+        strip_path: false
+
+  - name: diagnostics-service
+    url: http://diagnostics-service:8000
+    routes:
+      - name: diagnostics-api
+        paths: ["/api/v1/diagnostics"]
+        strip_path: false
+
+  - name: pharmacy-service
+    url: http://pharmacy-service:8000
+    routes:
+      - name: pharmacy-api
+        paths: ["/api/v1/pharmacy"]
+        strip_path: false
+
+  - name: nursing-service
+    url: http://nursing-service:8000
+    routes:
+      - name: nursing-api
+        paths: ["/api/v1/nursing"]
+        strip_path: false
+
+  - name: ot-service
+    url: http://ot-service:8000
+    routes:
+      - name: ot-api
+        paths: ["/api/v1/ot"]
+        strip_path: false
+
+  - name: icu-service
+    url: http://icu-service:8000
+    routes:
+      - name: icu-api
+        paths: ["/api/v1/icu"]
+        strip_path: false
+
+  - name: blood-bank-service
+    url: http://blood-bank-service:8000
+    routes:
+      - name: blood-bank-api
+        paths: ["/api/v1/blood-bank"]
+        strip_path: false
+
+  - name: infection-control-service
+    url: http://infection-control-service:8000
+    routes:
+      - name: infection-control-api
+        paths: ["/api/v1/infection-control"]
+        strip_path: false
+
+  - name: medical-records-service
+    url: http://medical-records-service:8000
+    routes:
+      - name: medical-records-api
+        paths: ["/api/v1/medical-records"]
+        strip_path: false
+
+  - name: ai-service
+    url: http://ai-service:8000
+    routes:
+      - name: ai-api
+        paths: ["/api/v1/ai"]
+        strip_path: false
+
+  - name: devices-service
+    url: http://devices-service:8000
+    routes:
+      - name: devices-api
+        paths: ["/api/v1/devices"]
+        strip_path: false
+
+  # ─── Operational Services (Node.js/NestJS) ─────────────────
+  - name: appointment-service
+    url: http://appointment-service:3000
+    routes:
+      - name: appointments-api
+        paths: ["/api/v1/appointments"]
+        strip_path: false
+
+  - name: billing-service
+    url: http://billing-service:3000
+    routes:
+      - name: billing-api
+        paths: ["/api/v1/billing"]
+        strip_path: false
+
+  - name: inventory-service
+    url: http://inventory-service:3000
+    routes:
+      - name: inventory-api
+        paths: ["/api/v1/inventory"]
+        strip_path: false
+
+  - name: hr-service
+    url: http://hr-service:3000
+    routes:
+      - name: hr-api
+        paths: ["/api/v1/hr"]
+        strip_path: false
+
+  - name: facilities-service
+    url: http://facilities-service:3000
+    routes:
+      - name: facilities-api
+        paths: ["/api/v1/facilities"]
+        strip_path: false
+
+  - name: er-service
+    url: http://er-service:3000
+    routes:
+      - name: er-api
+        paths: ["/api/v1/er"]
+        strip_path: false
+
+  - name: bed-management-service
+    url: http://bed-management-service:3000
+    routes:
+      - name: bed-mgmt-api
+        paths: ["/api/v1/beds"]
+        strip_path: false
+
+  - name: order-service
+    url: http://order-service:3000
+    routes:
+      - name: order-api
+        paths: ["/api/v1/orders"]
+        strip_path: false
+
+  - name: telemedicine-service
+    url: http://telemedicine-service:3000
+    routes:
+      - name: telemedicine-api
+        paths: ["/api/v1/telemedicine"]
+        strip_path: false
+
+  - name: notification-service
+    url: http://notification-service:3000
+    routes:
+      - name: notification-api
+        paths: ["/api/v1/notifications"]
+        strip_path: false
+
+  - name: management-service
+    url: http://management-service:3000
+    routes:
+      - name: management-api
+        paths: ["/api/v1/management"]
+        strip_path: false
+
+  - name: legal-service
+    url: http://legal-service:3000
+    routes:
+      - name: legal-api
+        paths: ["/api/v1/legal"]
+        strip_path: false
+
+  - name: compliance-service
+    url: http://compliance-service:3000
+    routes:
+      - name: compliance-api
+        paths: ["/api/v1/compliance"]
+        strip_path: false
+
+  - name: audit-service
+    url: http://audit-service:3000
+    routes:
+      - name: audit-api
+        paths: ["/api/v1/audit"]
+        strip_path: false
+
+  # ─── Platform Services ────────────────────────────────────
+  - name: iam-service
+    url: http://iam-service:8000
+    routes:
+      - name: iam-api
+        paths: ["/api/v1/iam"]
+        strip_path: false
+
+  - name: zta-service
+    url: http://zta-service:8000
+    routes:
+      - name: zta-api
+        paths: ["/api/v1/zta"]
+        strip_path: false
+
+  - name: analytics-service
+    url: http://analytics-service:8000
+    routes:
+      - name: analytics-api
+        paths: ["/api/v1/analytics"]
+        strip_path: false
+
+  # ─── API Gateway Management Services ────────────────────────
+  - name: kong-config-service
+    url: http://kong-config-service:8021
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    routes:
+      - name: kong-config-api
+        paths:
+          - /api/gateway/kong
+          - /api/v1/kong-gateway
+        strip_path: false
+
+  - name: api-composition-gateway
+    url: http://api-composition-gateway:8022
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    routes:
+      - name: api-composition-api
+        paths:
+          - /api/gateway/composition
+          - /api/gateway/discovery
+          - /api/v1/api-composition
+        strip_path: false
+
+  - name: graphql-federation-gateway
+    url: http://graphql-federation-gateway:8023
+    connect_timeout: 5000
+    read_timeout: 30000
+    write_timeout: 30000
+    routes:
+      - name: graphql-federation-api
+        paths:
+          - /graphql
+          - /api/graphql-gateway
+        strip_path: false
+
+
+plugins:
+  - name: correlation-id
+    config:
+      header_name: X-Request-ID
+      generator: uuid
+      echo_downstream: true
+
+  - name: rate-limiting
+    config:
+      minute: 100
+      policy: local
+      fault_tolerant: true
+      hide_client_headers: false
+
+  - name: request-transformer
+    config:
+      add:
+        headers:
+          - "X-Gateway: medtrust-kong"
+          - "X-Forwarded-Proto: https"
+
+  - name: cors
+    config:
+      origins:
+        - "*"
+      methods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      headers:
+        - Accept
+        - Accept-Version
+        - Content-Length
+        - Content-MD5
+        - Content-Type
+        - Date
+        - Authorization
+        - X-Tenant-ID
+      exposed_headers:
+        - X-Total-Count
+      credentials: true
+      max_age: 3600

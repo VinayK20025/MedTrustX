@@ -1,0 +1,1 @@
+"""MedTrustX Accreditation Service — Routes."""

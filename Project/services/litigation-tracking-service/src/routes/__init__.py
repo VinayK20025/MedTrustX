@@ -1,0 +1,1 @@
+"""MedTrustX Litigation Service — Routes."""

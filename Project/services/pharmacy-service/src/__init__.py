@@ -1,0 +1,1 @@
+"""MedTrustX Pharmacy Service."""

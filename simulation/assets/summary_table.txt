@@ -1,0 +1,24 @@
+╔══════════════════════════════════════════════════════════╗
+║          MEDTRUSTX DHOS — PRESENTATION SUMMARY          ║
+╠══════════════════════════════════════════════════════════╣
+║ Module                    │ Result        │ Status       ║
+╠══════════════════════════════════════════════════════════╣
+║ Multi-Tenant RLS          │ 0 leaks       │  PASS ✓     ║
+║ ZTA Device Trust Agent    │ 9.4/10        │  TRUSTED ✓  ║
+║ Jailbreak Block           │ 0.0/10        │  BLOCKED ✓  ║
+║ Clinical Core FHIR R4     │ 48 resources  │  VALID ✓    ║
+║ CDS Drug Interaction      │ MAJOR flagged │  BLOCKED ✓  ║
+║ AI Readmission Risk       │ 0.73 HIGH     │  ACTIVE ✓   ║
+║ Vitals Anomaly Detection  │ Z=8.17        │  ALERTED ✓  ║
+║ Audit Hash Chain          │ 52,063 events │  INTACT ✓   ║
+║ Breach Detection          │ 1,504 flagged │  DETECTED ✓ ║
+║ Compliance Score          │ 84% avg       │  14 FWKs ✓  ║
+║ DDoS Protection           │ 8,280 blocked │  BLOCKED ✓  ║
+║ WAF SQL Injection         │ OWASP_SQLI_001│  BLOCKED ✓  ║
+╠══════════════════════════════════════════════════════════╣
+║ Total Services Demonstrated    : 14 microservices       ║
+║ Total Data Points Queried      : 337,637 rows           ║
+║ Total Security Checks          : 10 per device          ║
+║ Compliance Frameworks          : 14 simultaneously      ║
+║ Presentation Duration          : ~15 minutes            ║
+╚══════════════════════════════════════════════════════════╝

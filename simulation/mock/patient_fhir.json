@@ -1,0 +1,45 @@
+{
+  "resourceType": "Patient",
+  "id": "e4b85c32-1f4a-4b9e-8c3d-2f9b1c7a8b6d",
+  "meta": {
+    "versionId": "2",
+    "lastUpdated": "2026-05-16T08:00:00Z"
+  },
+  "text": {
+    "status": "generated",
+    "div": "<div xmlns=\"http://www.w3.org/1999/xhtml\">James Harrison</div>"
+  },
+  "identifier": [
+    {
+      "use": "usual",
+      "type": {
+        "coding": [
+          {
+            "system": "http://terminology.hl7.org/CodeSystem/v2-0203",
+            "code": "MR",
+            "display": "Medical record number"
+          }
+        ]
+      },
+      "system": "http://medtrustx.com/fhir/NamingSystem/mrn",
+      "value": "MRN-8472-91"
+    }
+  ],
+  "active": true,
+  "name": [
+    {
+      "use": "official",
+      "family": "Harrison",
+      "given": ["James"]
+    }
+  ],
+  "telecom": [
+    {
+      "system": "phone",
+      "value": "+1-555-0198",
+      "use": "home"
+    }
+  ],
+  "gender": "male",
+  "birthDate": "1958-04-12"
+}

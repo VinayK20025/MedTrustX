@@ -1,0 +1,1 @@
+"""MedTrustX Safety Service — Middleware."""

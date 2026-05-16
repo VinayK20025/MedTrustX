@@ -1,0 +1,61 @@
+# MedTrustX Device Trust Agent — Production Dependencies
+# Python 3.11+ required
+# Generated: 2026-05-15
+
+# ── Core framework ─────────────────────────────────────────────────────────
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# ── Cryptography & PKI ─────────────────────────────────────────────────────
+cryptography==41.0.7
+pyOpenSSL==23.3.0
+python-jose[cryptography]==3.3.0
+certifi==2023.11.17
+
+# ── HTTP clients ───────────────────────────────────────────────────────────
+httpx==0.25.2
+aiohttp==3.9.1
+requests==2.31.0
+urllib3==2.1.0
+
+# ── Database ───────────────────────────────────────────────────────────────
+psycopg2-binary==2.9.9
+
+# ── Metrics / Observability ────────────────────────────────────────────────
+prometheus-client==0.19.0
+
+# ── Structured logging ─────────────────────────────────────────────────────
+structlog==23.2.0
+
+# ── CLI / Configuration ────────────────────────────────────────────────────
+click==8.1.7
+python-dotenv==1.0.0
+
+# ── Scheduling ─────────────────────────────────────────────────────────────
+schedule==1.2.1
+
+# ── Retry logic ────────────────────────────────────────────────────────────
+tenacity==8.2.3
+
+# ── System / Platform detection ────────────────────────────────────────────
+psutil==5.9.6
+netifaces==0.11.0
+
+# ── Windows-specific (installed only on Windows) ───────────────────────────
+pywin32==306; sys_platform == "win32"
+pywin32-ctypes==0.2.2; sys_platform == "win32"
+wmi==1.5.1; sys_platform == "win32"
+
+# ── macOS-specific (installed only on macOS) ───────────────────────────────
+pyobjc-core==10.0; sys_platform == "darwin"
+pyobjc-framework-SystemConfiguration==10.0; sys_platform == "darwin"
+pyobjc-framework-Security==10.0; sys_platform == "darwin"
+
+# ── Async utilities ────────────────────────────────────────────────────────
+asyncio-mqtt==0.16.2
+
+# ── IP address utilities ───────────────────────────────────────────────────
+ipaddress==1.0.23
+
+# ── Date/time utilities ────────────────────────────────────────────────────
+python-dateutil==2.8.2

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<!--
+  MedTrustX Browser Agent — Injected Loader Page
+
+  This page is injected into a hidden <iframe> by the zta-service portal
+  to bootstrap the browser-side trust attestation agent.  It:
+
+    1. Detects Web Worker support and capability flags
+    2. Loads checks.js + reporter.js + agent.js into a Dedicated Worker
+    3. Sends START to the Worker with the configured options
+    4. Relays CYCLE_COMPLETE / CYCLE_ERROR events to the parent frame via
+       postMessage (same-origin only)
+    5. Falls back to running checks inline (main thread) if Workers are
+       unsupported
+
+  SECURITY:
+    - The iframe MUST be served from the same origin as zta-service so that
+      credentials: "include" fetch calls in reporter.js forward the session.
+    - The parent frame MUST validate the origin of incoming postMessages:
+        event.origin === "https://zta.your-domain.com"
+    - Content-Security-Policy header on this page should restrict to:
+        script-src 'self'; connect-src 'self'; frame-ancestors 'self'
+    - No inline scripts are evaluated (CSP nonce/hash not needed here because
+      all script tags have src= attributes pointing to same-origin files).
+
+  Configuration injected by the server (template variable replacement):
+    {{ZTA_BASE_URL}}   — e.g. https://zta.company.com
+    {{CHECK_INTERVAL}} — milliseconds between cycles (default 300000)
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>MedTrustX Device Trust Agent</title>
+  <style>
+    /* Hidden page — no visible content */
+    html, body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      visibility: hidden;
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+<!-- No visible content: this page operates entirely in the background -->
+
+<script src="checks.js"></script>
+<script src="reporter.js"></script>
+<script>
+  (function () {
+    "use strict";
+
+    // ── Configuration (injected at serve time) ──────────────────────────
+
+    var ZTA_BASE_URL    = "{{ZTA_BASE_URL}}";
+    var CHECK_INTERVAL  = parseInt("{{CHECK_INTERVAL}}", 10) || 300000;
+    var AGENT_SCRIPT    = "agent.js";
+
+    // Sanitise template-injected values
+    if (!ZTA_BASE_URL || ZTA_BASE_URL === "{{ZTA_BASE_URL}}") {
+      // Same-origin default when template wasn't substituted
+      ZTA_BASE_URL = window.location.origin;
+    }
+    if (isNaN(CHECK_INTERVAL) || CHECK_INTERVAL < 30000) {
+      CHECK_INTERVAL = 300000;
+    }
+
+    // ── Validate parent-frame origin ────────────────────────────────────
+
+    var TRUSTED_ORIGIN = ZTA_BASE_URL.replace(/\/$/, "");
+
+    function _sendToParent(msg) {
+      try {
+        if (window.parent && window.parent !== window) {
+          window.parent.postMessage(msg, TRUSTED_ORIGIN);
+        }
+      } catch (_e) {}
+    }
+
+    // ── Web Worker path ─────────────────────────────────────────────────
+
+    function _startWorker() {
+      var worker;
+      try {
+        worker = new Worker(AGENT_SCRIPT);
+      } catch (err) {
+        console.warn("[MedTrustX] Worker creation failed:", err.message);
+        _startInline();
+        return;
+      }
+
+      worker.addEventListener("message", function (event) {
+        var msg = event.data || {};
+
+        switch (msg.type) {
+          case "READY":
+            _sendToParent({ type: "MEDTRUSTX_AGENT_READY", agentVersion: msg.agentVersion });
+            break;
+
+          case "CYCLE_COMPLETE":
+            _sendToParent({ type: "MEDTRUSTX_CYCLE_COMPLETE", data: msg.data });
+            break;
+
+          case "CYCLE_ERROR":
+            _sendToParent({ type: "MEDTRUSTX_CYCLE_ERROR", error: msg.error });
+            break;
+
+          case "STATUS_REPORT":
+            _sendToParent({ type: "MEDTRUSTX_STATUS_REPORT", data: msg.data });
+            break;
+
+          case "STOPPED":
+            _sendToParent({ type: "MEDTRUSTX_AGENT_STOPPED" });
+            break;
+
+          default:
+            break;
+        }
+      });
+
+      worker.addEventListener("error", function (err) {
+        console.warn("[MedTrustX] Worker error:", err.message);
+        _sendToParent({ type: "MEDTRUSTX_WORKER_ERROR", error: err.message });
+      });
+
+      // Relay control messages from parent frame to the worker
+      window.addEventListener("message", function (event) {
+        if (event.origin !== TRUSTED_ORIGIN) return;
+        var msg = event.data || {};
+        if (
+          msg.type === "STOP" ||
+          msg.type === "RUN_NOW" ||
+          msg.type === "STATUS"
+        ) {
+          worker.postMessage(msg);
+        }
+      });
+
+      // Start the agent
+      worker.postMessage({
+        type: "START",
+        options: {
+          baseUrl:    ZTA_BASE_URL,
+          intervalMs: CHECK_INTERVAL,
+        },
+      });
+    }
+
+    // ── Inline fallback (no Worker support) ────────────────────────────
+
+    function _startInline() {
+      // Dynamically load agent.js as a classic script, then start inline
+      var script = document.createElement("script");
+      script.src = AGENT_SCRIPT;
+      script.onload = function () {
+        try {
+          if (typeof module !== "undefined" && module.exports) {
+            var agent = module.exports;
+            agent.start({ baseUrl: ZTA_BASE_URL, intervalMs: CHECK_INTERVAL });
+          } else {
+            // agent.js auto-starts if MEDTRUSTX_AGENT_OPTIONS is set
+            window.MEDTRUSTX_AGENT_OPTIONS = {
+              autoStart:  true,
+              baseUrl:    ZTA_BASE_URL,
+              intervalMs: CHECK_INTERVAL,
+            };
+            // Patch postMessage so agent can still communicate with parent
+            var origSelf = typeof self !== "undefined" ? self : window;
+            var origPost = origSelf.postMessage.bind(origSelf);
+            origSelf.postMessage = function (msg) {
+              // Forward to parent instead of broadcasting to self
+              _sendToParent(
+                Object.assign({}, msg, {
+                  type: "MEDTRUSTX_" + (msg.type || "EVENT"),
+                })
+              );
+            };
+          }
+          _sendToParent({ type: "MEDTRUSTX_AGENT_READY", mode: "inline" });
+        } catch (err) {
+          _sendToParent({ type: "MEDTRUSTX_INLINE_ERROR", error: err.message });
+        }
+      };
+      script.onerror = function () {
+        _sendToParent({ type: "MEDTRUSTX_LOAD_ERROR", error: "agent.js failed to load" });
+      };
+      document.head.appendChild(script);
+    }
+
+    // ── Bootstrap ───────────────────────────────────────────────────────
+
+    if (typeof Worker === "function") {
+      _startWorker();
+    } else {
+      _startInline();
+    }
+  })();
+</script>
+</body>
+</html>

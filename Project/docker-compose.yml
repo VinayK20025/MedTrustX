@@ -1,0 +1,1421 @@
+# MedTrustX DHOS — Docker Compose (Part 1: Data Layer + Identity)
+# Full compose file — services added incrementally
+
+x-pg-common: &pg-common
+  image: postgres:16-alpine
+  restart: unless-stopped
+  command: ["postgres", "-c", "wal_level=replica", "-c", "max_connections=200"]
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  #  DATA LAYER — PostgreSQL Instances
+  # ═══════════════════════════════════════════════════════════
+  pg-clinical:
+    <<: *pg-common
+    container_name: medtrust-pg-clinical
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: ${PG_CLINICAL_USER}
+      POSTGRES_PASSWORD: ${PG_CLINICAL_PASSWORD}
+      POSTGRES_DB: patients_db
+    volumes:
+      - pg-clinical-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/pg-clinical-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  pg-operational:
+    <<: *pg-common
+    container_name: medtrust-pg-operational
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: ${PG_OPERATIONAL_USER}
+      POSTGRES_PASSWORD: ${PG_OPERATIONAL_PASSWORD}
+      POSTGRES_DB: scheduling_db
+    volumes:
+      - pg-operational-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/pg-operational-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  pg-iam:
+    <<: *pg-common
+    container_name: medtrust-pg-iam
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: ${PG_IAM_USER}
+      POSTGRES_PASSWORD: ${PG_IAM_PASSWORD}
+      POSTGRES_DB: iam_db
+    volumes:
+      - pg-iam-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/pg-iam-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  pg-analytics:
+    <<: *pg-common
+    container_name: medtrust-pg-analytics
+    ports: ["5435:5432"]
+    environment:
+      POSTGRES_USER: ${PG_ANALYTICS_USER}
+      POSTGRES_PASSWORD: ${PG_ANALYTICS_PASSWORD}
+      POSTGRES_DB: analytics_db
+    volumes:
+      - pg-analytics-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/pg-analytics-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  pg-telemed:
+    <<: *pg-common
+    container_name: medtrust-pg-telemed
+    ports: ["5436:5432"]
+    environment:
+      POSTGRES_USER: ${PG_TELEMED_USER}
+      POSTGRES_PASSWORD: ${PG_TELEMED_PASSWORD}
+      POSTGRES_DB: telemedicine_db
+    volumes:
+      - pg-telemed-data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/pg-telemed-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  REDIS
+  # ═══════════════════════════════════════════════════════════
+  redis:
+    image: redis:7-alpine
+    container_name: medtrust-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    volumes:
+      - redis-data:/data
+      - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks: [medtrust-data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  REDPANDA (Kafka-compatible)
+  # ═══════════════════════════════════════════════════════════
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: medtrust-redpanda
+    restart: unless-stopped
+    command:
+      - redpanda start
+      - --smp 1
+      - --memory 512M
+      - --reserve-memory 0M
+      - --overprovisioned
+      - --kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr internal://redpanda:9092,external://localhost:19092
+      - --schema-registry-addr internal://0.0.0.0:8081,external://0.0.0.0:18081
+      - --pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082
+    ports:
+      - "19092:19092"
+      - "18081:18081"
+      - "18082:18082"
+      - "9644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    networks: [medtrust-data]
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 768M }
+    logging: *default-logging
+
+  redpanda-console:
+    image: redpandadata/console:latest
+    container_name: medtrust-redpanda-console
+    restart: unless-stopped
+    ports: ["8082:8080"]
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      KAFKA_BROKERS: redpanda:9092
+      KAFKA_SCHEMAREGISTRY_ENABLED: "true"
+      KAFKA_SCHEMAREGISTRY_URLS: http://redpanda:8081
+    depends_on:
+      redpanda: { condition: service_healthy }
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 256M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  IDENTITY & ZTA LAYER
+  # ═══════════════════════════════════════════════════════════
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    container_name: medtrust-keycloak
+    restart: unless-stopped
+    command: start-dev --import-realm
+    ports: ["8080:8080"]
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: ${KC_DB_URL}
+      KC_DB_USERNAME: ${KC_DB_USERNAME}
+      KC_DB_PASSWORD: ${KC_DB_PASSWORD}
+      KC_HOSTNAME_STRICT: "false"
+      KC_PROXY: edge
+      KC_HTTP_ENABLED: "true"
+      KC_HEALTH_ENABLED: "true"
+    volumes:
+      - ./infrastructure/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-gateway, medtrust-security, medtrust-data]
+    healthcheck:
+      test: ["CMD", "/bin/bash", "-c", "exec 3<>/dev/tcp/localhost/8080; echo -e 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3; cat <&3 | grep -q '200'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    deploy:
+      resources:
+        limits: { memory: 1G }
+    logging: *default-logging
+
+  opa:
+    image: openpolicyagent/opa:latest-debug
+    container_name: medtrust-opa
+    restart: unless-stopped
+    ports: ["8181:8181"]
+    command: run --server --addr :8181 /policies
+    volumes:
+      - ./infrastructure/opa/policies:/policies:ro
+    networks: [medtrust-security, medtrust-services]
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 256M }
+    logging: *default-logging
+
+  vault:
+    image: hashicorp/vault:1.15
+    container_name: medtrust-vault
+    restart: unless-stopped
+    ports: ["8200:8200"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_DEV_ROOT_TOKEN_ID}
+      VAULT_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+      VAULT_ADDR: http://127.0.0.1:8200
+    cap_add: [IPC_LOCK]
+    volumes:
+      - vault-data:/vault/data
+      - ./infrastructure/vault/config:/vault/config:ro
+    networks: [medtrust-security]
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 256M }
+    logging: *default-logging
+
+  step-ca:
+    image: smallstep/step-ca:latest
+    container_name: medtrust-step-ca
+    restart: unless-stopped
+    ports: ["9443:9000"]
+    environment:
+      DOCKER_STEPCA_INIT_NAME: MedTrust CA
+      DOCKER_STEPCA_INIT_DNS_NAMES: step-ca,localhost
+      DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT: "true"
+      DOCKER_STEPCA_INIT_ACME: "true"
+    volumes:
+      - step-ca-data:/home/step
+    networks: [medtrust-security]
+    deploy:
+      resources:
+        limits: { memory: 128M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  API GATEWAY — Kong
+  # ═══════════════════════════════════════════════════════════
+  kong:
+    image: kong:3.6
+    container_name: medtrust-kong
+    restart: unless-stopped
+    ports:
+      - "${KONG_PROXY_PORT}:8000"
+      - "${KONG_PROXY_SSL_PORT}:8443"
+      - "${KONG_ADMIN_PORT}:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /etc/kong/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: "0.0.0.0:8001"
+      KONG_LOG_LEVEL: info
+      KONG_PLUGINS: bundled,correlation-id,request-transformer,response-transformer
+    volumes:
+      - ./infrastructure/kong/kong.yml:/etc/kong/kong.yml:ro
+    networks: [medtrust-edge, medtrust-gateway, medtrust-services]
+    healthcheck:
+      test: ["CMD", "kong", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  STORAGE — MinIO
+  # ═══════════════════════════════════════════════════════════
+  minio:
+    image: minio/minio:latest
+    container_name: medtrust-minio
+    restart: unless-stopped
+    ports:
+      - "${MINIO_API_PORT}:9000"
+      - "${MINIO_CONSOLE_PORT}:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    networks: [medtrust-data]
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  CLICKHOUSE
+  # ═══════════════════════════════════════════════════════════
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: medtrust-clickhouse
+    restart: unless-stopped
+    ports:
+      - "${CLICKHOUSE_HTTP_PORT}:8123"
+      - "9010:9000"
+    environment:
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    networks: [medtrust-data]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  OPENSEARCH
+  # ═══════════════════════════════════════════════════════════
+  opensearch:
+    image: opensearchproject/opensearch:2
+    container_name: medtrust-opensearch
+    restart: unless-stopped
+    ports: ["9200:9200"]
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD}
+      OPENSEARCH_JAVA_OPTS: "-Xms256m -Xmx256m"
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+    volumes:
+      - opensearch-data:/usr/share/opensearch/data
+    networks: [medtrust-data, medtrust-monitoring]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2
+    container_name: medtrust-opensearch-dashboards
+    restart: unless-stopped
+    ports: ["5601:5601"]
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on: [opensearch]
+    networks: [medtrust-monitoring]
+    deploy:
+      resources:
+        limits: { memory: 512M }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  PYTHON / FASTAPI MICROSERVICES (Clinical Core + Platform)
+  # ═══════════════════════════════════════════════════════════
+  patient-service:
+    build: { context: ./services/patient-service, dockerfile: Dockerfile }
+    container_name: medtrust-patient-service
+    restart: unless-stopped
+    ports: ["${PATIENT_SERVICE_PORT}:8000"]
+    environment: &py-env
+      ENVIRONMENT: ${ENVIRONMENT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      KAFKA_BROKERS: redpanda:9092
+      KEYCLOAK_URL: http://keycloak:8080
+      OPA_URL: http://opa:8181
+      VAULT_ADDR: ${VAULT_ADDR}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      TENANT_IDS: ${TENANT_IDS}
+      DB_HOST: pg-clinical
+      DB_PORT: "5432"
+      DB_USER: patient_svc
+      DB_PASSWORD: patient_svc_secret
+      DB_NAME: patients_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  clinical-service:
+    build: { context: ./services/clinical-service, dockerfile: Dockerfile }
+    container_name: medtrust-clinical-service
+    restart: unless-stopped
+    ports: ["${CLINICAL_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: clinical_svc
+      DB_PASSWORD: clinical_svc_secret
+      DB_NAME: clinical_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  diagnostics-service:
+    build: { context: ./services/diagnostics-service, dockerfile: Dockerfile }
+    container_name: medtrust-diagnostics-service
+    restart: unless-stopped
+    ports: ["${DIAGNOSTICS_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: diagnostics_svc
+      DB_PASSWORD: diagnostics_svc_secret
+      DB_NAME: diagnostics_db
+      FHIR_URL: http://hapi-fhir:8080/fhir
+      ORTHANC_URL: http://orthanc:8042
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  pharmacy-service:
+    build: { context: ./services/pharmacy-service, dockerfile: Dockerfile }
+    container_name: medtrust-pharmacy-service
+    restart: unless-stopped
+    ports: ["${PHARMACY_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: pharmacy_svc
+      DB_PASSWORD: pharmacy_svc_secret
+      DB_NAME: pharmacy_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  nursing-service:
+    build: { context: ./services/nursing-service, dockerfile: Dockerfile }
+    container_name: medtrust-nursing-service
+    restart: unless-stopped
+    ports: ["${NURSING_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: nursing_svc
+      DB_PASSWORD: nursing_svc_secret
+      DB_NAME: nursing_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  ot-service:
+    build: { context: ./services/ot-service, dockerfile: Dockerfile }
+    container_name: medtrust-ot-service
+    restart: unless-stopped
+    ports: ["${OT_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: ot_svc
+      DB_PASSWORD: ot_svc_secret
+      DB_NAME: ot_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  icu-service:
+    build: { context: ./services/icu-service, dockerfile: Dockerfile }
+    container_name: medtrust-icu-service
+    restart: unless-stopped
+    ports: ["${ICU_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: icu_svc
+      DB_PASSWORD: icu_svc_secret
+      DB_NAME: icu_db
+      EMQX_HOST: emqx
+      EMQX_PORT: "1883"
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  blood-bank-service:
+    build: { context: ./services/blood-bank-service, dockerfile: Dockerfile }
+    container_name: medtrust-blood-bank-service
+    restart: unless-stopped
+    ports: ["${BLOOD_BANK_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: blood_bank_svc
+      DB_PASSWORD: blood_bank_svc_secret
+      DB_NAME: blood_bank_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  infection-control-service:
+    build: { context: ./services/infection-control-service, dockerfile: Dockerfile }
+    container_name: medtrust-infection-control-service
+    restart: unless-stopped
+    ports: ["${INFECTION_CONTROL_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: infection_ctrl_svc
+      DB_PASSWORD: infection_ctrl_svc_secret
+      DB_NAME: infection_control_db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  medical-records-service:
+    build: { context: ./services/medical-records-service, dockerfile: Dockerfile }
+    container_name: medtrust-medical-records-service
+    restart: unless-stopped
+    ports: ["${MEDICAL_RECORDS_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_USER: medrec_svc
+      DB_PASSWORD: medrec_svc_secret
+      DB_NAME: medical_records_db
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  ai-service:
+    build: { context: ./services/ai-service, dockerfile: Dockerfile }
+    container_name: medtrust-ai-service
+    restart: unless-stopped
+    ports: ["${AI_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-analytics
+      DB_PORT: "5432"
+      DB_USER: ai_svc
+      DB_PASSWORD: ai_svc_secret
+      DB_NAME: analytics_db
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      TF_SERVING_URL: http://tf-serving:8501
+    depends_on:
+      pg-analytics: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  devices-service:
+    build: { context: ./services/devices-service, dockerfile: Dockerfile }
+    container_name: medtrust-devices-service
+    restart: unless-stopped
+    ports: ["${DEVICES_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-analytics
+      DB_PORT: "5432"
+      DB_USER: devices_svc
+      DB_PASSWORD: devices_svc_secret
+      DB_NAME: devices_db
+      EMQX_HOST: emqx
+      EMQX_PORT: "1883"
+    depends_on:
+      pg-analytics: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  PLATFORM / ZTA SERVICES (Python)
+  # ═══════════════════════════════════════════════════════════
+  iam-service:
+    build: { context: ./services/iam-service, dockerfile: Dockerfile }
+    container_name: medtrust-iam-service
+    restart: unless-stopped
+    ports: ["${IAM_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: iam_svc
+      DB_PASSWORD: iam_svc_secret
+      DB_NAME: iam_db
+      KEYCLOAK_ADMIN_URL: http://keycloak:8080/admin
+    depends_on:
+      pg-iam: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-security]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  zta-service:
+    build: { context: ./services/zta-service, dockerfile: Dockerfile }
+    container_name: medtrust-zta-service
+    restart: unless-stopped
+    ports: ["${ZTA_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: zta_svc
+      DB_PASSWORD: zta_svc_secret
+      DB_NAME: zta_db
+      OPA_URL: http://opa:8181
+    depends_on:
+      pg-iam: { condition: service_healthy }
+      opa: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-security]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  analytics-service:
+    build: { context: ./services/analytics-service, dockerfile: Dockerfile }
+    container_name: medtrust-analytics-service
+    restart: unless-stopped
+    ports: ["${ANALYTICS_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-analytics
+      DB_PORT: "5432"
+      DB_USER: analytics_svc
+      DB_PASSWORD: analytics_svc_secret
+      DB_NAME: analytics_db
+      CLICKHOUSE_URL: http://clickhouse:8123
+    depends_on:
+      pg-analytics: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  threat-detection-service:
+    build: { context: ./services/threat-detection-service, dockerfile: Dockerfile }
+    container_name: medtrust-threat-detection-service
+    restart: unless-stopped
+    ports: ["${THREAT_DETECTION_SERVICE_PORT}:8000"]
+    environment:
+      <<: *py-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: threat_svc
+      DB_PASSWORD: threat_svc_secret
+      DB_NAME: threat_db
+      WAZUH_API: https://wazuh:55000
+      OPENSEARCH_URL: http://opensearch:9200
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-security, medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  NODE.JS / NESTJS MICROSERVICES
+  # ═══════════════════════════════════════════════════════════
+  gateway-service:
+    build: { context: ./services/gateway-service, dockerfile: Dockerfile }
+    container_name: medtrust-gateway-service
+    restart: unless-stopped
+    ports: ["${GATEWAY_SERVICE_PORT}:3000"]
+    environment: &node-env
+      NODE_ENV: ${ENVIRONMENT}
+      LOG_LEVEL: ${LOG_LEVEL}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      KAFKA_BROKERS: redpanda:9092
+      KEYCLOAK_URL: http://keycloak:8080
+      OPA_URL: http://opa:8181
+      VAULT_ADDR: ${VAULT_ADDR}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT}
+      TENANT_IDS: ${TENANT_IDS}
+    depends_on:
+      redis: { condition: service_healthy }
+      keycloak: { condition: service_healthy }
+    networks: [medtrust-gateway, medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  appointment-service:
+    build: { context: ./services/appointment-service, dockerfile: Dockerfile }
+    container_name: medtrust-appointment-service
+    restart: unless-stopped
+    ports: ["${APPOINTMENT_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: appointment_svc
+      DB_PASSWORD: appointment_svc_secret
+      DB_NAME: scheduling_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  billing-service:
+    build: { context: ./services/billing-service, dockerfile: Dockerfile }
+    container_name: medtrust-billing-service
+    restart: unless-stopped
+    ports: ["${BILLING_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: billing_svc
+      DB_PASSWORD: billing_svc_secret
+      DB_NAME: billing_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  inventory-service:
+    build: { context: ./services/inventory-service, dockerfile: Dockerfile }
+    container_name: medtrust-inventory-service
+    restart: unless-stopped
+    ports: ["${INVENTORY_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: inventory_svc
+      DB_PASSWORD: inventory_svc_secret
+      DB_NAME: inventory_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  hr-service:
+    build: { context: ./services/hr-service, dockerfile: Dockerfile }
+    container_name: medtrust-hr-service
+    restart: unless-stopped
+    ports: ["${HR_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: hr_svc
+      DB_PASSWORD: hr_svc_secret
+      DB_NAME: hr_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  facilities-service:
+    build: { context: ./services/facilities-service, dockerfile: Dockerfile }
+    container_name: medtrust-facilities-service
+    restart: unless-stopped
+    ports: ["${FACILITIES_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: facilities_svc
+      DB_PASSWORD: facilities_svc_secret
+      DB_NAME: facilities_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  er-service:
+    build: { context: ./services/er-service, dockerfile: Dockerfile }
+    container_name: medtrust-er-service
+    restart: unless-stopped
+    ports: ["${ER_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: er_svc
+      DB_PASSWORD: er_svc_secret
+      DB_NAME: er_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  bed-management-service:
+    build: { context: ./services/bed-management-service, dockerfile: Dockerfile }
+    container_name: medtrust-bed-management-service
+    restart: unless-stopped
+    ports: ["${BED_MANAGEMENT_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: bed_mgmt_svc
+      DB_PASSWORD: bed_mgmt_svc_secret
+      DB_NAME: bed_mgmt_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  order-service:
+    build: { context: ./services/order-service, dockerfile: Dockerfile }
+    container_name: medtrust-order-service
+    restart: unless-stopped
+    ports: ["${ORDER_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: order_svc
+      DB_PASSWORD: order_svc_secret
+      DB_NAME: order_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  telemedicine-service:
+    build: { context: ./services/telemedicine-service, dockerfile: Dockerfile }
+    container_name: medtrust-telemedicine-service
+    restart: unless-stopped
+    ports: ["${TELEMEDICINE_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-telemed
+      DB_PORT: "5432"
+      DB_USER: telemed_svc
+      DB_PASSWORD: telemed_svc_secret
+      DB_NAME: telemedicine_db
+      JITSI_URL: https://jitsi-web:8443
+    depends_on:
+      pg-telemed: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  notification-service:
+    build: { context: ./services/notification-service, dockerfile: Dockerfile }
+    container_name: medtrust-notification-service
+    restart: unless-stopped
+    ports: ["${NOTIFICATION_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-telemed
+      DB_PORT: "5432"
+      DB_USER: notification_svc
+      DB_PASSWORD: notification_svc_secret
+      DB_NAME: notification_db
+      POSTAL_HOST: postal
+      POSTAL_PORT: "25"
+    depends_on:
+      pg-telemed: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  management-service:
+    build: { context: ./services/management-service, dockerfile: Dockerfile }
+    container_name: medtrust-management-service
+    restart: unless-stopped
+    ports: ["${MANAGEMENT_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-analytics
+      DB_PORT: "5432"
+      DB_USER: management_svc
+      DB_PASSWORD: management_svc_secret
+      DB_NAME: management_db
+    depends_on:
+      pg-analytics: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  marketing-service:
+    build: { context: ./services/marketing-service, dockerfile: Dockerfile }
+    container_name: medtrust-marketing-service
+    restart: unless-stopped
+    ports: ["${MARKETING_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: marketing_svc
+      DB_PASSWORD: marketing_svc_secret
+      DB_NAME: marketing_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  legal-service:
+    build: { context: ./services/legal-service, dockerfile: Dockerfile }
+    container_name: medtrust-legal-service
+    restart: unless-stopped
+    ports: ["${LEGAL_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: legal_svc
+      DB_PASSWORD: legal_svc_secret
+      DB_NAME: legal_db
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  compliance-service:
+    build: { context: ./services/compliance-service, dockerfile: Dockerfile }
+    container_name: medtrust-compliance-service
+    restart: unless-stopped
+    ports: ["${COMPLIANCE_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: compliance_svc
+      DB_PASSWORD: compliance_svc_secret
+      DB_NAME: compliance_db
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  audit-service:
+    build: { context: ./services/audit-service, dockerfile: Dockerfile }
+    container_name: medtrust-audit-service
+    restart: unless-stopped
+    ports: ["${AUDIT_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-iam
+      DB_PORT: "5432"
+      DB_USER: audit_svc
+      DB_PASSWORD: audit_svc_secret
+      DB_NAME: audit_db
+      OPENSEARCH_URL: http://opensearch:9200
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data, medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  transplant-service:
+    build: { context: ./services/transplant-service, dockerfile: Dockerfile }
+    container_name: medtrust-transplant-service
+    restart: unless-stopped
+    ports: ["${TRANSPLANT_SERVICE_PORT}:3000"]
+    environment:
+      <<: *node-env
+      DB_HOST: pg-operational
+      DB_PORT: "5432"
+      DB_USER: transplant_svc
+      DB_PASSWORD: transplant_svc_secret
+      DB_NAME: transplant_db
+    depends_on:
+      pg-operational: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  FRONTEND — Next.js 14
+  # ═══════════════════════════════════════════════════════════
+  frontend:
+    build: { context: ./frontend, dockerfile: Dockerfile }
+    container_name: medtrust-frontend
+    restart: unless-stopped
+    ports: ["${FRONTEND_PORT}:3000"]
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_WS_URL: ${NEXT_PUBLIC_WS_URL}
+      NEXT_PUBLIC_KEYCLOAK_URL: http://localhost:8080
+      NEXT_PUBLIC_KEYCLOAK_REALM: ${KC_REALM}
+      HOSTNAME: "0.0.0.0"
+    depends_on: [gateway-service]
+    networks: [medtrust-edge, medtrust-gateway]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  HEALTHCARE INTEGRATIONS
+  # ═══════════════════════════════════════════════════════════
+  hapi-fhir:
+    image: hapiproject/hapi:latest
+    container_name: medtrust-hapi-fhir
+    restart: unless-stopped
+    ports: ["8090:8080"]
+    environment:
+      spring.datasource.url: jdbc:postgresql://pg-clinical:5432/fhir_db
+      spring.datasource.username: fhir_svc
+      spring.datasource.password: fhir_svc_secret
+      spring.datasource.driverClassName: org.postgresql.Driver
+      spring.jpa.properties.hibernate.dialect: ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgresDialect
+      hapi.fhir.fhir_version: R4
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-integration, medtrust-data]
+    deploy: { resources: { limits: { memory: 768M } } }
+    logging: *default-logging
+
+  orthanc:
+    image: orthancteam/orthanc:latest
+    container_name: medtrust-orthanc
+    restart: unless-stopped
+    ports: ["8042:8042", "4242:4242"]
+    environment:
+      ORTHANC__REGISTERED_USERS: '{"medtrust":"${ORTHANC_PASSWORD}"}'
+      ORTHANC__POSTGRESQL__HOST: pg-clinical
+      ORTHANC__POSTGRESQL__PORT: 5432
+      ORTHANC__POSTGRESQL__USERNAME: orthanc_svc
+      ORTHANC__POSTGRESQL__PASSWORD: orthanc_svc_secret
+      ORTHANC__POSTGRESQL__DATABASE: orthanc_db
+    volumes:
+      - orthanc-data:/var/lib/orthanc/db
+    depends_on:
+      pg-clinical: { condition: service_healthy }
+    networks: [medtrust-integration, medtrust-data]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  emqx:
+    image: emqx/emqx:latest
+    container_name: medtrust-emqx
+    restart: unless-stopped
+    ports: ["1883:1883", "8083:8083", "18083:18083"]
+    environment:
+      EMQX_NAME: medtrust-emqx
+      EMQX_DASHBOARD__DEFAULT_USERNAME: ${EMQX_DASHBOARD_USER}
+      EMQX_DASHBOARD__DEFAULT_PASSWORD: ${EMQX_DASHBOARD_PASSWORD}
+    volumes:
+      - emqx-data:/opt/emqx/data
+    networks: [medtrust-integration]
+    healthcheck:
+      test: ["CMD", "emqx", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  TELEMEDICINE — Jitsi Meet Stack
+  # ═══════════════════════════════════════════════════════════
+  jitsi-web:
+    image: jitsi/web:stable
+    container_name: medtrust-jitsi-web
+    restart: unless-stopped
+    ports: ["${JITSI_HTTPS_PORT}:443"]
+    environment:
+      ENABLE_AUTH: 1
+      AUTH_TYPE: jwt
+      TZ: ${JITSI_TIMEZONE}
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_MUC_DOMAIN: muc.meet.jitsi
+      XMPP_BOSH_URL_BASE: http://xmpp.meet.jitsi:5280
+      PUBLIC_URL: https://localhost:${JITSI_HTTPS_PORT}
+    volumes:
+      - jitsi-web-config:/config
+      - jitsi-web-certs:/etc/letsencrypt
+    depends_on: [jitsi-prosody]
+    networks: [medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  jitsi-prosody:
+    image: jitsi/prosody:stable
+    container_name: medtrust-jitsi-prosody
+    restart: unless-stopped
+    environment:
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      XMPP_MUC_DOMAIN: muc.meet.jitsi
+      TZ: ${JITSI_TIMEZONE}
+    volumes:
+      - jitsi-prosody-config:/config
+      - jitsi-prosody-plugins:/prosody-plugins-custom
+    networks: [medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  jitsi-jicofo:
+    image: jitsi/jicofo:stable
+    container_name: medtrust-jitsi-jicofo
+    restart: unless-stopped
+    environment:
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      JICOFO_AUTH_PASSWORD: ${JICOFO_AUTH_PASSWORD}
+      TZ: ${JITSI_TIMEZONE}
+    depends_on: [jitsi-prosody]
+    networks: [medtrust-integration]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  jitsi-jvb:
+    image: jitsi/jvb:stable
+    container_name: medtrust-jitsi-jvb
+    restart: unless-stopped
+    ports: ["10000:10000/udp"]
+    environment:
+      XMPP_DOMAIN: meet.jitsi
+      XMPP_AUTH_DOMAIN: auth.meet.jitsi
+      JVB_AUTH_PASSWORD: ${JVB_AUTH_PASSWORD}
+      JVB_PORT: 10000
+      TZ: ${JITSI_TIMEZONE}
+    depends_on: [jitsi-prosody]
+    networks: [medtrust-integration]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  coturn:
+    image: coturn/coturn:latest
+    container_name: medtrust-coturn
+    restart: unless-stopped
+    ports: ["3478:3478", "3478:3478/udp"]
+    command: ["--use-auth-secret", "--static-auth-secret=${COTURN_SECRET}", "--realm=medtrust"]
+    networks: [medtrust-integration]
+    deploy: { resources: { limits: { memory: 128M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  COMMUNICATION
+  # ═══════════════════════════════════════════════════════════
+  postal:
+    image: ghcr.io/postalserver/postal:latest
+    container_name: medtrust-postal
+    restart: unless-stopped
+    ports: ["${POSTAL_SMTP_PORT}:25", "5001:5000"]
+    networks: [medtrust-services]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  radicale:
+    image: tomsquest/docker-radicale:latest
+    container_name: medtrust-radicale
+    restart: unless-stopped
+    ports: ["${RADICALE_PORT}:5232"]
+    volumes:
+      - radicale-data:/data
+    networks: [medtrust-services]
+    deploy: { resources: { limits: { memory: 64M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  MONITORING & OBSERVABILITY
+  # ═══════════════════════════════════════════════════════════
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: medtrust-prometheus
+    restart: unless-stopped
+    ports: ["${PROMETHEUS_PORT}:9090"]
+    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.retention.time=15d"]
+    volumes:
+      - ./infrastructure/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks: [medtrust-monitoring, medtrust-services]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: medtrust-grafana
+    restart: unless-stopped
+    ports: ["${GRAFANA_PORT}:3000"]
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GF_SECURITY_ADMIN_USER}
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - ./infrastructure/grafana/provisioning:/etc/grafana/provisioning:ro
+      - grafana-data:/var/lib/grafana
+    depends_on: [prometheus, loki]
+    networks: [medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  loki:
+    image: grafana/loki:latest
+    container_name: medtrust-loki
+    restart: unless-stopped
+    ports: ["${LOKI_PORT}:3100"]
+    command: ["-config.file=/etc/loki/loki-config.yml"]
+    volumes:
+      - ./infrastructure/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    networks: [medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: medtrust-promtail
+    restart: unless-stopped
+    command: ["-config.file=/etc/promtail/promtail-config.yml"]
+    volumes:
+      - ./infrastructure/promtail/promtail-config.yml:/etc/promtail/promtail-config.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on: [loki]
+    networks: [medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 128M } } }
+    logging: *default-logging
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: medtrust-jaeger
+    restart: unless-stopped
+    ports: ["${JAEGER_UI_PORT}:16686", "${JAEGER_OTLP_PORT}:4317", "${JAEGER_COLLECTOR_PORT}:14268"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks: [medtrust-monitoring, medtrust-services]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  wazuh:
+    image: wazuh/wazuh-manager:4.8.0
+    container_name: medtrust-wazuh
+    restart: unless-stopped
+    ports: ["${WAZUH_SYSLOG_PORT}:1514", "${WAZUH_API_PORT}:55000"]
+    environment:
+      INDEXER_URL: http://opensearch:9200
+    volumes:
+      - wazuh-data:/var/ossec/data
+    networks: [medtrust-security, medtrust-monitoring]
+    deploy: { resources: { limits: { memory: 768M } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  DEVSECOPS
+  # ═══════════════════════════════════════════════════════════
+  gitea:
+    image: gitea/gitea:latest
+    container_name: medtrust-gitea
+    restart: unless-stopped
+    ports: ["${GITEA_HTTP_PORT}:3000", "${GITEA_SSH_PORT}:22"]
+    environment:
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: pg-iam:5432
+      GITEA__database__NAME: gitea_db
+      GITEA__database__USER: gitea_svc
+      GITEA__database__PASSWD: gitea_svc_secret
+    volumes:
+      - gitea-data:/data
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-devsecops, medtrust-data]
+    deploy: { resources: { limits: { memory: 256M } } }
+    logging: *default-logging
+
+  sonarqube:
+    image: sonarqube:community
+    container_name: medtrust-sonarqube
+    restart: unless-stopped
+    ports: ["${SONARQUBE_PORT}:9000"]
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://pg-iam:5432/sonarqube_db
+      SONAR_JDBC_USERNAME: sonarqube_svc
+      SONAR_JDBC_PASSWORD: sonarqube_svc_secret
+    volumes:
+      - sonarqube-data:/opt/sonarqube/data
+      - sonarqube-extensions:/opt/sonarqube/extensions
+    depends_on:
+      pg-iam: { condition: service_healthy }
+    networks: [medtrust-devsecops, medtrust-data]
+    deploy: { resources: { limits: { memory: 1G } } }
+    logging: *default-logging
+
+  # ═══════════════════════════════════════════════════════════
+  #  AI / ML
+  # ═══════════════════════════════════════════════════════════
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: medtrust-mlflow
+    restart: unless-stopped
+    ports: ["${MLFLOW_PORT}:5000"]
+    command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "${MLFLOW_BACKEND_STORE}", "--default-artifact-root", "${MLFLOW_ARTIFACT_ROOT}"]
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD}
+    depends_on:
+      pg-analytics: { condition: service_healthy }
+      minio: { condition: service_healthy }
+    networks: [medtrust-services, medtrust-data]
+    deploy: { resources: { limits: { memory: 512M } } }
+    logging: *default-logging
+
+  tf-serving:
+    image: tensorflow/serving:latest
+    container_name: medtrust-tf-serving
+    restart: unless-stopped
+    ports: ["${TF_SERVING_REST_PORT}:8501", "${TF_SERVING_GRPC_PORT}:8500"]
+    volumes:
+      - tf-models:/models
+    environment:
+      MODEL_NAME: medtrust_model
+    networks: [medtrust-services]
+    deploy: { resources: { limits: { memory: 1G } } }
+    logging: *default-logging
+
+# ─── NETWORKS ────────────────────────────────────────────────
+networks:
+  medtrust-edge:
+    name: medtrust-edge
+    driver: bridge
+  medtrust-gateway:
+    name: medtrust-gateway
+    driver: bridge
+  medtrust-services:
+    name: medtrust-services
+    driver: bridge
+  medtrust-data:
+    name: medtrust-data
+    driver: bridge
+  medtrust-monitoring:
+    name: medtrust-monitoring
+    driver: bridge
+  medtrust-integration:
+    name: medtrust-integration
+    external: true
+  medtrust-devsecops:
+    name: medtrust-devsecops
+    driver: bridge
+  medtrust-security:
+    name: medtrust-security
+    driver: bridge
+
+# ─── VOLUMES ─────────────────────────────────────────────────
+volumes:
+  pg-clinical-data:
+  pg-operational-data:
+  pg-iam-data:
+  pg-analytics-data:
+  pg-telemed-data:
+  redis-data:
+  redpanda-data:
+  vault-data:
+  step-ca-data:
+  minio-data:
+  clickhouse-data:
+  opensearch-data:
+  orthanc-data:
+  emqx-data:
+  jitsi-web-config:
+  jitsi-web-certs:
+  jitsi-prosody-config:
+  jitsi-prosody-plugins:
+  radicale-data:
+  prometheus-data:
+  grafana-data:
+  loki-data:
+  wazuh-data:
+  gitea-data:
+  sonarqube-data:
+  sonarqube-extensions:
+  tf-models:
+

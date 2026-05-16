@@ -1,0 +1,1 @@
+"""MedTrustX Appointments Service — Schemas."""

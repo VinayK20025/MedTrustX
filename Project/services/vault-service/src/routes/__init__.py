@@ -1,0 +1,1 @@
+"""MedTrustX Vault Service — Routes."""

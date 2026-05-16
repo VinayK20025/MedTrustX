@@ -1,0 +1,74 @@
+# ─── Dependencies ───────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ─── Docker Volumes (persistent data) ─────────────────────
+volumes/
+
+# ─── Environment & Secrets ─────────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ─── TLS/mTLS Certificates ────────────────────────────────
+infrastructure/step-ca/certs/
+infrastructure/step-ca/secrets/
+infrastructure/kong/ssl/
+*.pem
+*.key
+*.crt
+*.csr
+!infrastructure/step-ca/config/*.json
+
+# ─── IDE ───────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ─── OS ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Python ────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+ENV/
+
+# ─── Node.js ───────────────────────────────────────────────
+dist/
+build/
+*.tsbuildinfo
+.next/
+out/
+
+# ─── Logs ──────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Testing ──────────────────────────────────────────────
+coverage/
+.nyc_output/
+htmlcov/
+.pytest_cache/
+
+# ─── ML Models ─────────────────────────────────────────────
+*.h5
+*.pb
+*.onnx
+models/saved/

@@ -1,0 +1,1 @@
+"""MedTrustX Configuration Service."""

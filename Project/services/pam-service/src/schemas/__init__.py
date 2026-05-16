@@ -1,0 +1,1 @@
+"""MedTrustX PAM Service — Schemas."""

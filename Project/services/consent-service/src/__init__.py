@@ -1,0 +1,1 @@
+"""MedTrustX Consent Management Service."""

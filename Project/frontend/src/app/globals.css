@@ -1,0 +1,116 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@layer base {
+  :root {
+    /* ── MedTrustX CSS Custom Properties ──────────────── */
+    --mt-navy: #1A3057;
+    --mt-teal: #00A389;
+
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 6.9%;
+    --card-foreground: 210 40% 98%;
+    --primary: 168 100% 32%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --border: 217.2 32.6% 17.5%;
+    --ring: 168 100% 32%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-white/[0.08];
+  }
+
+  body {
+    @apply bg-surface-dark text-white font-sans antialiased;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Scrollbar ─────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.16); }
+
+  /* ── Selection ─────────────────────────────────────── */
+  ::selection {
+    background: rgba(0,163,137,0.3);
+    color: white;
+  }
+}
+
+@layer components {
+  /* ── Glass Cards ────────────────────────────────────── */
+  .glass-card {
+    @apply bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-xl shadow-glass;
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300 hover:bg-white/[0.08] hover:border-white/[0.16] hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+
+  /* ── Badges ─────────────────────────────────────────── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-success { @apply bg-success/15 text-success-light; }
+  .badge-danger  { @apply bg-emergency/15 text-emergency-light; }
+  .badge-warning { @apply bg-warning/15 text-warning-light; }
+  .badge-info    { @apply bg-blue-500/15 text-blue-300; }
+
+  /* ── Buttons (legacy compatibility) ─────────────────── */
+  .btn-primary {
+    @apply px-4 py-2 bg-teal-500 hover:bg-teal-600 text-white rounded-lg font-medium
+           transition-all duration-200 shadow-lg shadow-teal-500/20 hover:shadow-teal-500/30
+           active:scale-[0.97];
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 text-gray-400 hover:text-white hover:bg-white/5 rounded-lg
+           font-medium transition-all duration-200;
+  }
+
+  /* ── Inputs (legacy compatibility) ──────────────────── */
+  .input-field {
+    @apply w-full px-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-lg text-white
+           placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-teal-500/40
+           focus:border-teal-500 transition-all duration-200;
+  }
+
+  /* ── Stat Cards ─────────────────────────────────────── */
+  .stat-card {
+    @apply glass-card p-6 flex flex-col gap-2;
+  }
+
+  /* ── Sidebar Links (legacy compatibility) ───────────── */
+  .sidebar-link {
+    @apply flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400
+           transition-all duration-200 hover:text-white hover:bg-white/[0.06];
+  }
+  .sidebar-link-active {
+    @apply sidebar-link text-teal-400 bg-teal-500/10 border-l-2 border-teal-500;
+  }
+}
+
+@layer utilities {
+  /* ── Gradient text ──────────────────────────────────── */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-teal-400 to-teal-200;
+  }
+
+  /* ── Focus ring ─────────────────────────────────────── */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-teal-500/40 focus:ring-offset-2 focus:ring-offset-surface-dark;
+  }
+
+  /* ── Hide scrollbar ─────────────────────────────────── */
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}

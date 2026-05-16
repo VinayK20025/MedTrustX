@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  MedTrustX Device Trust Agent — macOS LaunchDaemon Plist
+
+  Install path: /Library/LaunchDaemons/com.medtrustx.agent.plist
+
+  Load:
+    sudo launchctl bootstrap system /Library/LaunchDaemons/com.medtrustx.agent.plist
+
+  Unload:
+    sudo launchctl bootout system /Library/LaunchDaemons/com.medtrustx.agent.plist
+
+  Status:
+    launchctl list com.medtrustx.agent
+
+  Notes:
+    - RunAtLoad=true starts the daemon immediately when loaded and on every boot.
+    - KeepAlive=true restarts the daemon if it exits unexpectedly.
+    - ThrottleInterval prevents rapid restart storms (60s backoff).
+    - ProcessType=Background prevents App Nap and low-priority scheduling.
+    - The binary must be code-signed with a Developer ID Application certificate
+      and notarized by Apple to pass Gatekeeper on macOS 13+.
+    - Permissions: this plist must be owned root:wheel with mode 0644.
+      The binary at /usr/local/bin/medtrustx-agent must be 0755 root:wheel.
+    - Logs are written to /var/log/medtrustx/. The log directory must be
+      created by the installer before loading this plist.
+-->
+<plist version="1.0">
+<dict>
+
+    <!-- ── Identity ─────────────────────────────────────────────────────── -->
+    <key>Label</key>
+    <string>com.medtrustx.agent</string>
+
+    <!-- ── Binary + arguments ───────────────────────────────────────────── -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/usr/local/bin/medtrustx-agent</string>
+        <string>run</string>
+        <!-- --foreground ensures the process does not fork: required for launchd -->
+        <string>--foreground</string>
+    </array>
+
+    <!-- ── Environment variables ────────────────────────────────────────── -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <!-- Path to the .env config file deployed by the installer -->
+        <key>MEDTRUSTX_ENV_FILE</key>
+        <string>/etc/medtrustx/agent.env</string>
+
+        <!-- Structured JSON log output file -->
+        <key>AGENT_LOG_FILE_PATH</key>
+        <string>/var/log/medtrustx/agent.log</string>
+
+        <!-- Log level: DEBUG | INFO | WARNING | ERROR -->
+        <key>AGENT_LOG_LEVEL</key>
+        <string>INFO</string>
+    </dict>
+
+    <!-- ── Lifecycle ─────────────────────────────────────────────────────── -->
+
+    <!-- Start when plist is loaded (boot and manual load) -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Keep daemon alive if it exits, crashes, or is killed -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Minimum time (seconds) between restart attempts (prevents crash loops) -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+
+    <!-- ── Resource limits ───────────────────────────────────────────────── -->
+
+    <!-- Maximum virtual memory (bytes) — 512 MB -->
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>1024</integer>
+        <key>NumberOfProcesses</key>
+        <integer>64</integer>
+    </dict>
+
+    <!-- ── Process scheduling ────────────────────────────────────────────── -->
+
+    <!-- Background priority — prevents App Nap; appropriate for a daemon -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- Restrict to the system session (runs before any user login) -->
+    <key>LimitLoadToSessionType</key>
+    <string>System</string>
+
+    <!-- ── Standard I/O ──────────────────────────────────────────────────── -->
+
+    <!-- Capture stdout (structlog emits to stdout in json mode) -->
+    <key>StandardOutPath</key>
+    <string>/var/log/medtrustx/agent.stdout.log</string>
+
+    <!-- Capture stderr for unexpected error output -->
+    <key>StandardErrorPath</key>
+    <string>/var/log/medtrustx/agent.stderr.log</string>
+
+    <!-- ── Working directory ─────────────────────────────────────────────── -->
+    <key>WorkingDirectory</key>
+    <string>/var/lib/medtrustx</string>
+
+    <!-- ── Permissions ───────────────────────────────────────────────────── -->
+
+    <!-- Umask 0022 — files created by daemon are readable by root only -->
+    <key>Umask</key>
+    <integer>18</integer>
+
+</dict>
+</plist>

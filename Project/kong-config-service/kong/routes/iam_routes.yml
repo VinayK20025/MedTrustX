@@ -1,0 +1,8 @@
+_format_version: "3.0"
+services:
+  - name: iam-service
+    routes:
+      - name: iam-api-routes
+        paths:
+          - /api/iam
+        strip_path: false

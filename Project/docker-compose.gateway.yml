@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  kong-config-service:
+    build:
+      context: ./kong-config-service
+      dockerfile: Dockerfile
+    container_name: kong-config-service
+    ports:
+      - "8021:8021"
+    environment:
+      - KONG_ADMIN_URL=http://medtrust-kong:8001
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_ops_admin:operational_db_secret_2026@pg-operational:5433/scheduling_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=kong-config-service
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    networks:
+      - medtrust-services
+      - medtrust-gateway
+
+  api-composition-gateway:
+    build:
+      context: ./api-composition-gateway
+      dockerfile: Dockerfile
+    container_name: api-composition-gateway
+    ports:
+      - "8022:8022"
+    environment:
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_ops_admin:operational_db_secret_2026@pg-operational:5433/scheduling_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - OPA_URL=http://opa:8181
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=api-composition-gateway
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    networks:
+      - medtrust-services
+      - medtrust-gateway
+
+  graphql-federation-gateway:
+    build:
+      context: ./graphql-federation-gateway
+      dockerfile: Dockerfile
+    container_name: graphql-federation-gateway
+    ports:
+      - "8023:8023"
+    environment:
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - COMPOSITION_GATEWAY_URL=http://api-composition-gateway:8022
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=graphql-federation-gateway
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    networks:
+      - medtrust-services
+      - medtrust-gateway
+    depends_on:
+      - api-composition-gateway
+
+networks:
+  medtrust-services:
+    external: true
+  medtrust-gateway:
+    external: true

@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  appointment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    ports:
+      - "8016:8016"
+    networks:
+      - medtrust-data
+    environment:
+      - APPOINTMENT_SERVICE_PORT=8016
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_op_admin:op_db_secret_2026@pg-operational:5433/operational_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - AUDIT_SERVICE_URL=http://audit-service:8015
+      - PATIENT_SERVICE_URL=http://patient-service:8018
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=appointment-service
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    depends_on:
+      - pg-operational
+      - medtrust-redis
+      - keycloak
+      - jaeger
+      - audit-service
+      - patient-service
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8016/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

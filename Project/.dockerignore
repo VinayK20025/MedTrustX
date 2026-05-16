@@ -1,0 +1,48 @@
+# MedTrustX — Docker Build Ignore
+node_modules
+npm-debug.log*
+.git
+.gitignore
+.env
+.env.local
+.env.*.local
+*.md
+!README.md
+LICENSE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.coverage
+htmlcov
+.mypy_cache
+.ruff_cache
+*.egg-info
+venv
+.venv
+
+# Next.js
+.next
+out
+
+# Docker
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Infrastructure configs (not needed in service images)
+infrastructure/
+scripts/
+Documents/
+
+# Volumes & data
+volumes/
+data/
+*.log

@@ -1,0 +1,61 @@
+Fetching patient record from patients_db...
+Patient Record:
+MRN: 700-001
+Name: Priya Menon
+DOB: 1958-05-12
+Gender: female
+Status: active
+Tenant: tenant_general
+Loading 90-day vitals history...
+ vital_type  | count | avg_value 
+-------------+-------+-----------
+ Heart rate  |   840 |      78.2
+ Systolic BP |   840 |     138.5
+ SpO2        |   840 |      96.8
+(3 rows)
+Heart Rate (last 30 readings): Mean: 78 bpm | Std: 8.2 | Z-score: 0.3 → NORMAL
+Current Conditions (ICD-10 / SNOMED):
+ icd10_code | description             | status 
+------------+-------------------------+--------
+ I10        | Hypertension            | active
+ E11.9      | Type 2 Diabetes         | active
+ J45.909    | Asthma                  | resolved
+ Z87.891    | Personal history of CVD | historical
+(4 rows)
+Prescribing Warfarin — running CDS checks...
+Check 1/3: Drug interactions... ⚠ INTERACTION: Warfarin × Aspirin → MAJOR
+Check 2/3: Allergy cross-check... ✓ No known allergies to Warfarin
+Check 3/3: Dosage validation... ✓ 5mg dose within therapeutic range
+PRESCRIPTION REQUIRES PRESCRIBER OVERRIDE
+Dr. Menon overrides with reason: 'Patient monitored, aspirin discontinued'
+Prescription created — Audit log written
+Exporting patient as FHIR R4 Bundle...
+{
+  "resourceType": "Bundle",
+  "type": "document",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "pat-gen-a3b2c1",
+        "identifier": [{"system": "MRN", "value": "700-001"}],
+        "name": [{"family": "Menon", "given": ["Priya"]}],
+        "birthDate": "1958-05-12",
+        "gender": "female"
+      }
+    }
+  ],
+  "total": 48
+}
+FHIR R4 Bundle: 48 resources | Valid
+Running FHIR R4 Validator...
+✓ Patient resource: R4 compliant
+✓ Observation resources: LOINC codes valid
+✓ Condition resources: ICD-10 codes valid
+✓ Bundle structure: valid searchset
+Simulating real-time vitals stream (WebSocket)...
+[10:42:01] Heart rate: 78 bpm  | Z-score: 0.2  | NORMAL
+[10:42:31] Heart rate: 82 bpm  | Z-score: 0.7  | NORMAL
+[10:43:01] Heart rate: 145 bpm | Z-score: 3.2  | ⚠ ANOMALY
+AI ANOMALY DETECTION TRIGGERED
+Alert published → Redis:medtrust:clinical:alerts

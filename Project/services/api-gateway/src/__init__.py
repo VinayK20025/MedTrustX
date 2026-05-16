@@ -1,0 +1,1 @@
+"""MedTrustX Internal API Gateway."""

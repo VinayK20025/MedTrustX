@@ -1,0 +1,31 @@
+{
+  "title": "MedTrustX DHOS Overview",
+  "tags": ["medtrust", "overview"],
+  "timezone": "browser",
+  "refresh": "10s",
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "title": "Total HTTP Requests",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total[1m])) by (service)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "title": "ZTA Denials",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(increase(zta_denials_total[5m]))",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

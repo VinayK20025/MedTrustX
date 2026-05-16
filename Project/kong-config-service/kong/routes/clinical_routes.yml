@@ -1,0 +1,13 @@
+_format_version: "3.0"
+services:
+  - name: clinical-service
+    routes:
+      - name: clinical-api-routes
+        paths:
+          - /api/clinical/vitals
+          - /api/clinical/vitals/(?<id>\w+)
+          - /api/clinical/conditions
+          - /api/clinical/medications
+          - /api/clinical/(?<id>\w+)/orders
+          - /cds-services
+        strip_path: false

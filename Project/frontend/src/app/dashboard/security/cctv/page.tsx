@@ -1,0 +1,18 @@
+'use client';
+import React from 'react';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { Card, CardBody } from '@/components/ui/Card';
+
+export default function SecurityCctvPage() {
+  return (
+    <div className="space-y-5 animate-fade-in max-w-[1200px]">
+      <Breadcrumbs items={[{ label: 'Security' }, { label: 'CCTV Feeds' }]} />
+      <Card className="border-white/[0.06] shadow-glass bg-surface-light min-h-[400px] flex items-center justify-center">
+        <CardBody className="text-gray-500 text-center">
+          <p className="text-lg">CCTV Surveillance Grid</p>
+          <p className="text-sm">Monitor live and recorded feeds across all facility zones and entry points.</p>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  patient-service:
+    build:
+      context: ./patient-service
+    ports:
+      - "8018:8018"
+    environment:
+      - PATIENT_SERVICE_PORT=8018
+    networks:
+      - medtrust-data
+
+  clinical-service:
+    build:
+      context: ./clinical-service
+    ports:
+      - "8017:8017"
+    environment:
+      - CLINICAL_SERVICE_PORT=8017
+    networks:
+      - medtrust-data
+
+  appointment-service:
+    build:
+      context: ./appointment-service
+    ports:
+      - "8016:8016"
+    environment:
+      - APPOINTMENT_SERVICE_PORT=8016
+    networks:
+      - medtrust-data
+
+networks:
+  medtrust-data:
+    external: true

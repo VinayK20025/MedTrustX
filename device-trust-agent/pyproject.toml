@@ -1,0 +1,188 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "medtrustx-device-trust-agent"
+version = "1.0.0"
+description = "MedTrustX DHOS Zero Trust Device Trust Agent — cross-platform endpoint attestation and trust scoring"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [
+    { name = "MedTrustX Security Engineering", email = "security@medtrustx.io" }
+]
+keywords = ["zero-trust", "endpoint-security", "device-attestation", "healthcare", "HIPAA"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: No Input/Output (Daemon)",
+    "Intended Audience :: Healthcare Industry",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Security",
+]
+dependencies = [
+    "pydantic>=2.5.0",
+    "cryptography>=41.0.0",
+    "httpx>=0.25.0",
+    "asyncio-mqtt>=0.16.0",
+    "psycopg2-binary>=2.9.9",
+    "prometheus-client>=0.19.0",
+    "pyOpenSSL>=23.3.0",
+    "python-jose[cryptography]>=3.3.0",
+    "structlog>=23.2.0",
+    "click>=8.1.7",
+    "python-dotenv>=1.0.0",
+    "schedule>=1.2.1",
+    "aiohttp>=3.9.0",
+    "tenacity>=8.2.3",
+    "netifaces>=0.11.0",
+    "psutil>=5.9.6",
+    "wmi>=1.5.1; sys_platform == 'win32'",
+    "pywin32>=306; sys_platform == 'win32'",
+    "pywin32-ctypes>=0.2.2; sys_platform == 'win32'",
+    "pyobjc-core>=10.0; sys_platform == 'darwin'",
+    "pyobjc-framework-SystemConfiguration>=10.0; sys_platform == 'darwin'",
+    "requests>=2.31.0",
+    "certifi>=2023.11.17",
+    "urllib3>=2.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-mock>=3.12.0",
+    "pytest-cov>=4.1.0",
+    "black>=23.12.0",
+    "ruff>=0.1.8",
+    "mypy>=1.7.0",
+    "types-requests>=2.31.0",
+    "freezegun>=1.4.0",
+    "responses>=0.24.1",
+    "factory-boy>=3.3.0",
+]
+
+[project.scripts]
+medtrustx-agent = "src.main:cli_main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.setuptools.package-data]
+"src" = ["*.pem", "*.crt", "*.json"]
+
+# ── PyInstaller configuration ──────────────────────────────────────────────
+[tool.pyinstaller]
+name = "medtrustx-agent"
+onefile = true
+console = false
+icon = "assets/medtrustx.ico"
+hidden_imports = [
+    "src.checks.check_01_os_patch",
+    "src.checks.check_02_antivirus",
+    "src.checks.check_03_disk_encryption",
+    "src.checks.check_04_firewall",
+    "src.checks.check_05_screen_lock",
+    "src.checks.check_06_jailbreak",
+    "src.checks.check_07_certificate",
+    "src.checks.check_08_network",
+    "src.checks.check_09_processes",
+    "src.checks.check_10_behavioral",
+    "src.daemon.windows_service",
+    "src.daemon.macos_daemon",
+    "src.daemon.linux_daemon",
+    "win32serviceutil",
+    "win32service",
+    "win32event",
+    "wmi",
+    "pywintypes",
+]
+datas = [
+    { src = "certs/medtrustx-root-ca.pem", dest = "certs" },
+    { src = ".env.example", dest = "." },
+]
+add_data = [
+    "src/checks/*.py:src/checks",
+    "src/scoring/*.py:src/scoring",
+    "src/attestation/*.py:src/attestation",
+    "src/reporting/*.py:src/reporting",
+    "src/daemon/*.py:src/daemon",
+    "src/scheduler/*.py:src/scheduler",
+    "src/models/*.py:src/models",
+]
+
+# ── Black formatter ────────────────────────────────────────────────────────
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.mypy_cache
+  | \.pytest_cache
+  | dist
+  | build
+)/
+'''
+
+# ── Ruff linter ────────────────────────────────────────────────────────────
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I", "N", "S", "B", "C4", "UP"]
+ignore = ["S101", "S603", "S607"]
+target-version = "py311"
+
+# ── MyPy type checker ──────────────────────────────────────────────────────
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["tests/", "build/", "install/"]
+
+# ── Pytest configuration ───────────────────────────────────────────────────
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--tb=short",
+    "--cov=src",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-fail-under=80",
+]
+markers = [
+    "windows: tests that require Windows platform",
+    "macos: tests that require macOS platform",
+    "linux: tests that require Linux platform",
+    "integration: integration tests requiring live services",
+    "slow: tests that take more than 5 seconds",
+]
+
+# ── Coverage configuration ─────────────────────────────────────────────────
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "tests/*",
+    "build/*",
+    "install/*",
+    "browser-agent/*",
+]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 80
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@abstractmethod",
+]

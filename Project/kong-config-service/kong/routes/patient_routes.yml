@@ -1,0 +1,12 @@
+_format_version: "3.0"
+services:
+  - name: patient-service
+    routes:
+      - name: patient-api-routes
+        paths:
+          - /api/patients
+          - /api/patients/(?<id>\w+)
+          - /api/patients/(?<id>\w+)/records
+          - /fhir/r4/Patient
+          - /fhir/r4/Patient/(?<id>\w+)
+        strip_path: false

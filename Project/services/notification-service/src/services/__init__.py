@@ -1,0 +1,1 @@
+"""MedTrustX Notification Service — Services."""

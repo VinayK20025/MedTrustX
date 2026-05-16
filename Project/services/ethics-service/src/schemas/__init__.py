@@ -1,0 +1,1 @@
+"""MedTrustX Ethics Service — Schemas."""

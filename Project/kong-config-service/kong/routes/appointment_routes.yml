@@ -1,0 +1,9 @@
+_format_version: "3.0"
+services:
+  - name: appointment-service
+    routes:
+      - name: appointment-api-routes
+        paths:
+          - /api/appointments
+          - /api/schedules
+        strip_path: false

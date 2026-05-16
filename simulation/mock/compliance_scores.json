@@ -1,0 +1,21 @@
+{
+  "tenant_id": "tenant_general",
+  "overall_compliance_score": 84,
+  "last_assessed": "2026-05-16T08:00:00Z",
+  "scores": {
+    "HIPAA": 87,
+    "GDPR": 82,
+    "DPDP 2023": 79,
+    "ISO 27001:2022": 91,
+    "ISO 31000": 88,
+    "ISO 22301": 85,
+    "ISO 42001 (AI)": 76,
+    "PCI DSS v4.0": 83,
+    "DISHA": 89,
+    "HITRUST CSF": 84,
+    "SOC 2 Type II": 90,
+    "NIST CSF 2.0": 88,
+    "NIST 800-53r5": 86,
+    "NIST AI RMF": 74
+  }
+}

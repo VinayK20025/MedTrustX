@@ -1,0 +1,1 @@
+"""MedTrustX Automation Service — Schemas."""

@@ -1,0 +1,1 @@
+"""MedTrustX Analytics Service — Schemas."""

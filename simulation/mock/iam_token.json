@@ -1,0 +1,6 @@
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJhZG1pbl9kZW1vIiwiZXhwIjoxNzg0MTg0MDAwLCJ0ZW5hbnQiOiJ0ZW5hbnRfYXBvbGxvIn0.xyz_mock_signature",
+  "expires_in": 3600,
+  "token_type": "Bearer",
+  "session_state": "b1a2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d"
+}

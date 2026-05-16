@@ -1,0 +1,106 @@
+# MedTrustX — Infrastructure-Only Compose
+# Starts only stateful infrastructure: Postgres clusters, Redis, OPA, Vault.
+# NestJS and Python services are started natively by launch_production.sh.
+
+x-pg-common: &pg-common
+  image: postgres:16-alpine
+  restart: unless-stopped
+  command: ["postgres", "-c", "wal_level=replica", "-c", "max_connections=200"]
+  healthcheck:
+    test: ["CMD-SHELL", "pg_isready"]
+    interval: 10s
+    timeout: 5s
+    retries: 5
+
+services:
+  # ─── PostgreSQL Clusters ───────────────────────────────────────
+  pg-clinical:
+    <<: *pg-common
+    container_name: medtrust-pg-clinical
+    ports: ["5432:5432"]
+    environment:
+      POSTGRES_USER: medtrust_clinical_admin
+      POSTGRES_PASSWORD: clinical_db_secret_2026
+      POSTGRES_DB: patients_db
+    volumes:
+      - pg-clinical-data:/var/lib/postgresql/data
+    networks: [medtrust-data]
+
+  pg-operational:
+    <<: *pg-common
+    container_name: medtrust-pg-operational
+    ports: ["5433:5432"]
+    environment:
+      POSTGRES_USER: medtrust_ops_admin
+      POSTGRES_PASSWORD: operational_db_secret_2026
+      POSTGRES_DB: scheduling_db
+    volumes:
+      - pg-operational-data:/var/lib/postgresql/data
+    networks: [medtrust-data]
+
+  pg-iam:
+    <<: *pg-common
+    container_name: medtrust-pg-iam
+    ports: ["5434:5432"]
+    environment:
+      POSTGRES_USER: medtrust_iam_admin
+      POSTGRES_PASSWORD: iam_db_secret_2026
+      POSTGRES_DB: iam_db
+    volumes:
+      - pg-iam-data:/var/lib/postgresql/data
+    networks: [medtrust-data]
+
+  pg-analytics:
+    <<: *pg-common
+    container_name: medtrust-pg-analytics
+    ports: ["5435:5432"]
+    environment:
+      POSTGRES_USER: medtrust_analytics_admin
+      POSTGRES_PASSWORD: analytics_db_secret_2026
+      POSTGRES_DB: analytics_db
+    volumes:
+      - pg-analytics-data:/var/lib/postgresql/data
+    networks: [medtrust-data]
+
+  # ─── Redis ────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: medtrust-redis
+    restart: unless-stopped
+    ports: ["6379:6379"]
+    command: ["redis-server", "--requirepass", "redis_secret_2026"]
+    volumes:
+      - redis-data:/data
+    networks: [medtrust-data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis_secret_2026", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── OPA (Policy Engine) ──────────────────────────────────────
+  opa:
+    image: openpolicyagent/opa:latest-debug
+    container_name: medtrust-opa
+    restart: unless-stopped
+    ports: ["8181:8181"]
+    command: run --server --addr :8181 /policies
+    volumes:
+      - ./infrastructure/opa/policies:/policies:ro
+    networks: [medtrust-data]
+    healthcheck:
+      test: ["CMD", "wget", "-qO", "/dev/null", "http://localhost:8181/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  medtrust-data:
+    driver: bridge
+
+volumes:
+  pg-clinical-data:
+  pg-operational-data:
+  pg-iam-data:
+  pg-analytics-data:
+  redis-data:

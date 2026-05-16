@@ -1,0 +1,1 @@
+"""MedTrustX Isolation Service — Schemas."""

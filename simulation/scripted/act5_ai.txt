@@ -1,0 +1,58 @@
+Analyzing training dataset scale from analytics_db:
+        table        | count  
+---------------------+--------
+ patient_vitals      | 221991
+ patient_conditions  | 117148
+ readmission_risk    |   3386
+(3 rows)
+Engineering features for Patient MRN-700-001...
+Feature Vector:
+age                    : 67
+avg_heart_rate         : 82.3 bpm
+avg_systolic_bp        : 138.5 mmHg
+avg_spo2               : 96.8%
+num_active_conditions  : 4
+charlson_index         : 3
+num_encounters_90d     : 7
+avg_bmi                : 28.4
+Calling TF Serving inference endpoint...
+Readmission Risk Prediction:
+Risk Score    : 0.73 (HIGH RISK)
+Confidence    : 0.89
+Model Version : v2.1.4 (MLflow registry)
+Inference Time: 287ms
+HIGH RISK: Patient likely to be readmitted within 30 days
+Top 3 contributing features (SHAP values):
+Base value:    0.35
++ charlson_index    (+0.18) ████████████
++ num_encounters    (+0.12) ████████
++ avg_systolic_bp   (+0.08) █████
+Final score:   0.73
+Population Risk Distribution (analytics_db):
+ risk_label | count 
+------------+-------
+ low        |  3313
+ medium     |    69
+ high       |     4
+(3 rows)
+Risk Histogram:
+low    : ████████████████████████████  3,313
+medium : ████                             69
+high   : ▌                                4
+Detecting statistical anomalies in patient_vitals...
+ vital_type | vital_value |   tenant_id    
+------------+-------------+----------------
+ Heart rate |       145.0 | tenant_general
+ Heart rate |       132.0 | tenant_general
+ Heart rate |       128.0 | tenant_general
+(3 rows)
+Computing Z-scores against patient baselines...
+[Analysis] Value: 145 bpm | Baseline Mean: 78 | Std: 8.2
+Computed Z-score: 8.17
+THRESHOLD EXCEEDED (Z > 2.5) → ANOMALY FLAGGED
+Population-level Vitals Throughput (by hour):
+00:00 ██ 412
+06:00 ████████████ 3,821
+12:00 ████████████████████ 6,234
+18:00 ████████████████ 4,891
+23:00 ███ 731

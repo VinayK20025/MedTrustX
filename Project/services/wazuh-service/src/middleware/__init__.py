@@ -1,0 +1,1 @@
+"""MedTrustX Wazuh Service — Middleware."""

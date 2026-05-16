@@ -1,0 +1,1 @@
+"""MedTrustX Dashboard Service — Routes."""

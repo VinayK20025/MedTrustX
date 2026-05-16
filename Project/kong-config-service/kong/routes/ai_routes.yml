@@ -1,0 +1,11 @@
+_format_version: "3.0"
+services:
+  - name: ai-platform-service
+    routes:
+      - name: ai-api-routes
+        paths:
+          - /api/ai/predict-readmission
+          - /api/ai/vitals-anomaly
+          - /api/ai/analytics
+          - /api/ai/governance
+        strip_path: false

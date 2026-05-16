@@ -1,0 +1,138 @@
+{
+  "medtrust": {
+    "role_permissions": {
+      "super_administrator": [{"resource": "*", "actions": ["*"]}],
+      "ceo": [
+        {"resource": "dashboard", "actions": ["read"]},
+        {"resource": "reports", "actions": ["read"]},
+        {"resource": "kpi", "actions": ["read"]},
+        {"resource": "management", "actions": ["read", "write"]}
+      ],
+      "cio": [
+        {"resource": "system_config", "actions": ["read", "write"]},
+        {"resource": "audit_logs", "actions": ["read"]},
+        {"resource": "reports", "actions": ["read"]}
+      ],
+      "ciso": [
+        {"resource": "security_events", "actions": ["read", "write"]},
+        {"resource": "audit_logs", "actions": ["read"]},
+        {"resource": "zta_policies", "actions": ["read", "write"]},
+        {"resource": "threat_detection", "actions": ["read", "write"]}
+      ],
+      "cmo_medical": [
+        {"resource": "clinical_data", "actions": ["read"]},
+        {"resource": "patient_record", "actions": ["read"]},
+        {"resource": "reports", "actions": ["read"]}
+      ],
+      "general_physician": [
+        {"resource": "patient_record", "actions": ["read", "write"]},
+        {"resource": "clinical_order", "actions": ["read", "write"]},
+        {"resource": "prescription", "actions": ["read", "write"]},
+        {"resource": "diagnostic_report", "actions": ["read"]},
+        {"resource": "appointment", "actions": ["read"]}
+      ],
+      "surgeon": [
+        {"resource": "patient_record", "actions": ["read", "write"]},
+        {"resource": "ot_schedule", "actions": ["read", "write"]},
+        {"resource": "surgical_checklist", "actions": ["read", "write"]},
+        {"resource": "anesthesia_record", "actions": ["read"]},
+        {"resource": "clinical_order", "actions": ["read", "write"]}
+      ],
+      "head_of_department": [
+        {"resource": "patient_record", "actions": ["read"]},
+        {"resource": "staff_roster", "actions": ["read", "write"]},
+        {"resource": "department_reports", "actions": ["read"]},
+        {"resource": "clinical_order", "actions": ["read", "approve"]}
+      ],
+      "staff_nurse": [
+        {"resource": "patient_record", "actions": ["read", "write"]},
+        {"resource": "nursing_task", "actions": ["read", "write"]},
+        {"resource": "emar", "actions": ["read", "write"]},
+        {"resource": "vitals", "actions": ["read", "write"]},
+        {"resource": "shift_handover", "actions": ["read", "write"]}
+      ],
+      "icu_nurse": [
+        {"resource": "patient_record", "actions": ["read", "write"]},
+        {"resource": "vitals", "actions": ["read", "write"]},
+        {"resource": "ventilator_data", "actions": ["read"]},
+        {"resource": "critical_alerts", "actions": ["read", "acknowledge"]}
+      ],
+      "pharmacist": [
+        {"resource": "prescription", "actions": ["read", "verify", "dispense"]},
+        {"resource": "drug_inventory", "actions": ["read", "write"]},
+        {"resource": "drug_interaction", "actions": ["read"]}
+      ],
+      "lab_technician": [
+        {"resource": "lab_order", "actions": ["read", "write"]},
+        {"resource": "diagnostic_report", "actions": ["write"]},
+        {"resource": "patient_record", "actions": ["read"]}
+      ],
+      "radiologist": [
+        {"resource": "imaging_order", "actions": ["read"]},
+        {"resource": "diagnostic_report", "actions": ["read", "write"]},
+        {"resource": "dicom_image", "actions": ["read", "annotate"]}
+      ],
+      "billing_executive": [
+        {"resource": "billing", "actions": ["read", "write"]},
+        {"resource": "insurance_claim", "actions": ["read", "write"]},
+        {"resource": "patient_record", "actions": ["read"]}
+      ],
+      "receptionist": [
+        {"resource": "appointment", "actions": ["read", "write"]},
+        {"resource": "patient_record", "actions": ["read", "create"]},
+        {"resource": "billing", "actions": ["read"]}
+      ],
+      "hr_manager": [
+        {"resource": "staff_record", "actions": ["read", "write"]},
+        {"resource": "staff_roster", "actions": ["read", "write"]},
+        {"resource": "training", "actions": ["read", "write"]}
+      ],
+      "patient": [
+        {"resource": "patient_record", "actions": ["read"]},
+        {"resource": "appointment", "actions": ["read", "create"]},
+        {"resource": "teleconsult", "actions": ["read", "join"]},
+        {"resource": "consent", "actions": ["read", "write"]}
+      ],
+      "telemedicine_doctor": [
+        {"resource": "patient_record", "actions": ["read", "write"]},
+        {"resource": "teleconsult", "actions": ["read", "write", "start"]},
+        {"resource": "prescription", "actions": ["read", "write"]}
+      ],
+      "external_auditor": [
+        {"resource": "audit_logs", "actions": ["read"]},
+        {"resource": "compliance_report", "actions": ["read"]}
+      ],
+      "security_analyst": [
+        {"resource": "security_events", "actions": ["read"]},
+        {"resource": "audit_logs", "actions": ["read"]},
+        {"resource": "threat_detection", "actions": ["read"]}
+      ],
+      "devops_engineer": [
+        {"resource": "system_config", "actions": ["read", "write"]},
+        {"resource": "deployment", "actions": ["read", "write"]},
+        {"resource": "monitoring", "actions": ["read"]}
+      ],
+      "iomt_device": [
+        {"resource": "telemetry", "actions": ["write"]},
+        {"resource": "device_status", "actions": ["write"]}
+      ]
+    },
+    "phi_access_roles": [
+      "general_physician", "surgeon", "staff_nurse", "icu_nurse",
+      "head_of_department", "cmo_medical", "pharmacist", "radiologist",
+      "lab_technician", "telemedicine_doctor", "emergency_physician"
+    ],
+    "after_hours_roles": [
+      "emergency_physician", "icu_nurse", "staff_nurse",
+      "security_analyst", "super_administrator", "devops_engineer"
+    ],
+    "emergency_roles": [
+      "emergency_physician", "icu_nurse", "staff_nurse",
+      "surgeon", "general_physician", "super_administrator"
+    ],
+    "emergency_resources": [
+      "patient_record", "clinical_order", "prescription",
+      "vitals", "diagnostic_report", "blood_bank"
+    ]
+  }
+}

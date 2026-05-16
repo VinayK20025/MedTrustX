@@ -1,0 +1,1 @@
+"""MedTrustX IAM Service."""

@@ -1,0 +1,15 @@
+{
+  "tenant_id": "tenant_apollo",
+  "status": "active",
+  "overall_passed": true,
+  "tables": [
+    {"table": "patients", "leaked_rows": 0, "status": "PASS"},
+    {"table": "encounters", "leaked_rows": 0, "status": "PASS"},
+    {"table": "observations", "leaked_rows": 0, "status": "PASS"},
+    {"table": "conditions", "leaked_rows": 0, "status": "PASS"},
+    {"table": "medications", "leaked_rows": 0, "status": "PASS"},
+    {"table": "allergies", "leaked_rows": 0, "status": "PASS"},
+    {"table": "procedures", "leaked_rows": 0, "status": "PASS"},
+    {"table": "careplans", "leaked_rows": 0, "status": "PASS"}
+  ]
+}

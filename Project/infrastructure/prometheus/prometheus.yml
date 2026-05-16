@@ -1,0 +1,76 @@
+# MedTrustX — Prometheus Scrape Configuration
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+scrape_configs:
+  # ─── Infrastructure ────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: kong
+    static_configs:
+      - targets: ["kong:8001"]
+    metrics_path: /metrics
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis:6379"]
+
+  - job_name: redpanda
+    static_configs:
+      - targets: ["redpanda:9644"]
+    metrics_path: /public_metrics
+
+  # ─── Python/FastAPI Services ───────────────────────────────
+  - job_name: python-services
+    static_configs:
+      - targets:
+          - "patient-service:8000"
+          - "clinical-service:8000"
+          - "diagnostics-service:8000"
+          - "pharmacy-service:8000"
+          - "nursing-service:8000"
+          - "ot-service:8000"
+          - "icu-service:8000"
+          - "blood-bank-service:8000"
+          - "infection-control-service:8000"
+          - "medical-records-service:8000"
+          - "ai-service:8000"
+          - "devices-service:8000"
+          - "iam-service:8000"
+          - "zta-service:8000"
+          - "analytics-service:8000"
+          - "threat-detection-service:8000"
+    metrics_path: /metrics
+
+  # ─── Node.js/NestJS Services ───────────────────────────────
+  - job_name: node-services
+    static_configs:
+      - targets:
+          - "gateway-service:3000"
+          - "appointment-service:3000"
+          - "billing-service:3000"
+          - "inventory-service:3000"
+          - "hr-service:3000"
+          - "facilities-service:3000"
+          - "er-service:3000"
+          - "bed-management-service:3000"
+          - "order-service:3000"
+          - "telemedicine-service:3000"
+          - "notification-service:3000"
+          - "management-service:3000"
+          - "marketing-service:3000"
+          - "legal-service:3000"
+          - "compliance-service:3000"
+          - "audit-service:3000"
+          - "transplant-service:3000"
+    metrics_path: /metrics
+
+  # ─── Keycloak ──────────────────────────────────────────────
+  - job_name: keycloak
+    static_configs:
+      - targets: ["keycloak:8080"]
+    metrics_path: /metrics

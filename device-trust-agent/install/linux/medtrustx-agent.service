@@ -1,0 +1,126 @@
+[Unit]
+Description=MedTrustX Device Trust Agent
+Documentation=https://docs.medtrustx.io/agent
+# Start after the network stack is up so ZTA/SIEM/OPA endpoints are reachable.
+After=network-online.target
+Wants=network-online.target
+# If PostgreSQL is co-located, wait for it too (soft dependency — remove if remote).
+# After=postgresql.service
+# Restart this service if it is stopped externally.
+PartOf=
+# Avoid automatic activation if the system is degraded.
+ConditionPathExists=/usr/local/bin/medtrustx-agent
+
+[Service]
+# Type=notify means the process MUST call sd_notify(READY=1) before systemd
+# considers it started.  The agent's LinuxDaemon.notify_ready() does this.
+Type=notify
+
+# Run as dedicated system user (created by install.sh)
+User=medtrustx
+Group=medtrustx
+
+# Binary and arguments
+ExecStart=/usr/local/bin/medtrustx-agent run --foreground
+
+# On SIGHUP, reload configuration (linux_daemon.py handles SIGHUP → RELOADING=1)
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=10s
+# Maximum 5 restarts in 120 seconds before giving up
+StartLimitBurst=5
+StartLimitIntervalSec=120s
+
+# Timeouts
+TimeoutStartSec=30s
+TimeoutStopSec=30s
+
+# Watchdog: systemd kills and restarts the daemon if it does not send
+# sd_notify(WATCHDOG=1) within this interval.
+# LinuxDaemon.run_watchdog() pings at 50% of this value (15 s).
+WatchdogSec=30s
+
+# ── Environment ───────────────────────────────────────────────────────────────
+
+# Load optional .env file (EnvironmentFile= silently ignored if absent with -)
+EnvironmentFile=-/etc/medtrustx/agent.env
+
+# Override log destination (structured JSON)
+Environment=AGENT_LOG_FILE_PATH=/var/log/medtrustx/agent.log
+
+# ── Hardening ─────────────────────────────────────────────────────────────────
+
+# Prevent privilege escalation
+NoNewPrivileges=yes
+
+# Root filesystem is read-only; allow writes only to required paths
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/medtrustx /etc/medtrustx /tmp
+
+# Private /tmp namespace (no access to global /tmp)
+PrivateTmp=yes
+
+# No access to physical devices
+PrivateDevices=yes
+
+# Protect kernel tunables and modules
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+
+# Protect cgroups
+ProtectControlGroups=yes
+
+# Protect hostname and clock
+ProtectHostname=yes
+ProtectClock=yes
+
+# Allow only network address families needed: IPv4/IPv6 for reporting,
+# Unix sockets for sd_notify and PostgreSQL (AF_UNIX).
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+
+# Block namespace operations (agent does not use namespaces)
+RestrictNamespaces=yes
+
+# Lock process personality (no execution domain switching)
+LockPersonality=yes
+
+# Allow writable+executable memory for Python/PyInstaller boot
+MemoryDenyWriteExecute=no
+
+# Block real-time scheduling (not needed)
+RestrictRealtime=yes
+
+# Prevent SUID/SGID bits from being set
+RestrictSUIDSGID=yes
+
+# Restrict system calls to the set used by typical services.
+# Excludes ptrace, raw sockets, module loading, and other privileged calls.
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+# Isolate from other processes' file descriptors
+PrivateIPC=yes
+
+# ── Resource limits ───────────────────────────────────────────────────────────
+
+# File descriptors: agent opens sockets for 4 reporters + on-demand HTTP server
+LimitNOFILE=4096
+
+# Nice / IO priority: background service
+Nice=5
+IOSchedulingClass=best-effort
+IOSchedulingPriority=5
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+# Forward stdout/stderr to journald (also written to AGENT_LOG_FILE_PATH)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=medtrustx-agent
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,36 @@
+services:
+  rls-manager-service:
+    build:
+      context: ./rls-manager-service
+      dockerfile: Dockerfile
+    container_name: medtrust-rls-manager
+    ports:
+      - "8011:8011"
+    environment:
+      - ENVIRONMENT=development
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - CLINICAL_DB_URL=postgresql+asyncpg://medtrust_clinical_admin:clinical_db_secret_2026@medtrust-pg-clinical:5432/patients_db
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_ops_admin:operational_db_secret_2026@medtrust-pg-operational:5433/scheduling_db
+      - IAM_DB_URL=postgresql+asyncpg://medtrust_iam_admin:iam_db_secret_2026@medtrust-pg-iam:5434/iam_db
+      - ANALYTICS_DB_URL=postgresql+asyncpg://medtrust_analytics_admin:analytics_db_secret_2026@medtrust-pg-analytics:5435/analytics_db
+      - KEYCLOAK_URL=http://medtrust-keycloak:8080
+      - LOKI_URL=http://medtrust-loki:3100/loki/api/v1/push
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://medtrust-jaeger:4317
+    networks:
+      - medtrust-data
+    depends_on:
+      - medtrust-pg-clinical
+      - medtrust-pg-operational
+      - medtrust-pg-iam
+      - medtrust-pg-analytics
+      - medtrust-redis
+    volumes:
+      - ./rls-manager-service:/app
+      - ./medtrust-rls-lib:/medtrust-rls-lib
+    command: >
+      bash -c "pip install -e /medtrust-rls-lib && uvicorn app.main:app --host 0.0.0.0 --port 8011 --reload"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8011/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3

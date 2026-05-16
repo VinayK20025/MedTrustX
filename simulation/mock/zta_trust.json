@@ -1,0 +1,18 @@
+{
+  "device_id": "c982a1b3-4f5d-6e7a-8b9c-0d1e2f3a4b5c",
+  "trust_score": 9.4,
+  "trust_level": "TRUSTED",
+  "last_evaluated": "2026-05-16T08:00:00Z",
+  "checks": [
+    {"name": "OS Patch Level", "score": 10},
+    {"name": "Antivirus/EDR", "score": 9},
+    {"name": "Disk Encryption", "score": 10},
+    {"name": "Firewall", "score": 7},
+    {"name": "Screen Lock", "score": 10},
+    {"name": "Jailbreak Detection", "score": 10},
+    {"name": "Certificate/Identity", "score": 10},
+    {"name": "Network Security", "score": 8},
+    {"name": "Process Integrity", "score": 10},
+    {"name": "Behavioral Anomaly", "score": 9}
+  ]
+}

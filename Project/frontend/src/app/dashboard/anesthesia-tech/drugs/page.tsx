@@ -1,0 +1,16 @@
+'use client';
+import React from 'react';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { AnesthesiaDrugPanel, useAnesthesiaTechDashboard } from '@/modules/anesthesia-tech';
+import { Skeleton } from '@/components/ui/Spinner';
+
+export default function AnesthesiaDrugsPage() {
+  const { data, isLoading } = useAnesthesiaTechDashboard({});
+  if (isLoading) return <Skeleton className="h-[600px] w-full rounded-xl" />;
+  return (
+    <div className="space-y-5 animate-fade-in max-w-[1600px]">
+      <Breadcrumbs items={[{ label: 'Anesthesia Dept' }, { label: 'Drug Preparation' }]} />
+      <AnesthesiaDrugPanel drugs={data?.data?.drugQueue ?? []} />
+    </div>
+  );
+}

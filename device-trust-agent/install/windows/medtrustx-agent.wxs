@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  MedTrustX Device Trust Agent — WiX Installer Configuration
+
+  Builds a Windows Installer (.msi) package via WiX Toolset v4.
+
+  Prerequisites:
+    - WiX Toolset v4 (https://wixtoolset.org/)
+    - medtrustx-agent.exe already built by build_windows.ps1
+
+  Build command (from the install/windows/ directory):
+    wix build medtrustx-agent.wxs -o ../../dist/medtrustx-agent.msi
+
+  Or using the older v3 candle/light workflow:
+    candle medtrustx-agent.wxs -out build\medtrustx-agent.wixobj
+    light   build\medtrustx-agent.wixobj -out ../../dist/medtrustx-agent.msi
+
+  Variables (passed with -d flag or environment):
+    ProductVersion — e.g. 1.0.0  (required)
+    AgentExe       — path to medtrustx-agent.exe  (required)
+    AgentEnv       — path to agent.env config file (optional)
+
+  Example:
+    wix build medtrustx-agent.wxs \
+        -d ProductVersion=1.0.0 \
+        -d AgentExe=..\..\dist\medtrustx-agent.exe \
+        -o ..\..\dist\medtrustx-agent-1.0.0.msi
+-->
+
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+
+  <!-- ── Product definition ──────────────────────────────────────────────── -->
+
+  <Package
+    Name="MedTrustX Device Trust Agent"
+    Manufacturer="MedTrustX"
+    Version="!(bind.FileVersion.medtrustx_agent_exe)"
+    UpgradeCode="{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+    Language="1033"
+    Codepage="1252"
+    InstallerVersion="500"
+    Compressed="yes"
+    Scope="perMachine">
+
+    <!-- WiX v4 media cabinet -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- ── Upgrade logic: remove older versions before installing ──────── -->
+    <MajorUpgrade
+      Schedule="afterInstallInitialize"
+      AllowSameVersionUpgrades="no"
+      DowngradeErrorMessage="A newer version of MedTrustX Device Trust Agent is already installed." />
+
+    <!-- ── Properties ─────────────────────────────────────────────────── -->
+    <Property Id="ARPPRODUCTICON" Value="MedTrustXIcon" />
+    <Property Id="ARPHELPLINK"    Value="https://docs.medtrustx.io/agent" />
+    <Property Id="ARPURLINFOABOUT" Value="https://medtrustx.io" />
+
+    <!-- Require Windows 10 or higher (VersionNT >= 1000) -->
+    <Launch
+      Condition="VersionNT &gt;= 1000"
+      Message="MedTrustX Device Trust Agent requires Windows 10 or later." />
+
+    <!-- Require 64-bit Windows -->
+    <Launch
+      Condition="Msix64"
+      Message="MedTrustX Device Trust Agent requires a 64-bit version of Windows." />
+
+    <!-- ── Directory structure ─────────────────────────────────────────── -->
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="MedTrustXDir" Name="MedTrustX">
+        <Directory Id="AgentInstallDir" Name="Agent" />
+      </Directory>
+    </StandardDirectory>
+
+    <StandardDirectory Id="CommonAppDataFolder">
+      <Directory Id="MedTrustXDataDir" Name="MedTrustX">
+        <Directory Id="AgentDataDir" Name="Agent">
+          <Directory Id="AgentLogDir" Name="logs" />
+        </Directory>
+      </Directory>
+    </StandardDirectory>
+
+    <!-- ── Component group: agent binary ──────────────────────────────── -->
+    <ComponentGroup Id="AgentBinaryComponents" Directory="AgentInstallDir">
+
+      <Component Id="AgentExeComponent" Guid="{B2C3D4E5-F6A7-8901-BCDE-F01234567891}">
+        <File
+          Id="medtrustx_agent_exe"
+          Name="medtrustx-agent.exe"
+          Source="$(var.AgentExe)"
+          KeyPath="yes" />
+
+        <!-- Windows service registration -->
+        <ServiceInstall
+          Id="MedTrustXAgentService"
+          Name="medtrustx-agent"
+          DisplayName="MedTrustX Device Trust Agent"
+          Description="Zero Trust endpoint attestation for MedTrustX DHOS."
+          Type="ownProcess"
+          Start="auto"
+          Account="LocalSystem"
+          ErrorControl="normal"
+          Arguments="run"
+          Vital="yes">
+          <!-- Service failure recovery: restart after 60s, 3 times -->
+          <util:ServiceConfig
+            FirstFailureActionType="restart"
+            SecondFailureActionType="restart"
+            ThirdFailureActionType="none"
+            RestartServiceDelayInSeconds="60"
+            ResetPeriodInDays="1" />
+        </ServiceInstall>
+
+        <!-- Start the service during install -->
+        <ServiceControl
+          Id="StartMedTrustXAgentService"
+          Name="medtrustx-agent"
+          Start="install"
+          Stop="both"
+          Remove="uninstall"
+          Wait="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ── Component group: configuration ────────────────────────────── -->
+    <ComponentGroup Id="AgentConfigComponents" Directory="AgentDataDir">
+
+      <Component Id="AgentEnvComponent" Guid="{C3D4E5F6-A7B8-9012-CDEF-012345678912}">
+        <!-- Deploy default agent.env if provided -->
+        <?ifdef AgentEnv ?>
+        <File
+          Id="agent_env_file"
+          Name="agent.env"
+          Source="$(var.AgentEnv)"
+          KeyPath="yes" />
+        <?else ?>
+        <!-- Create an empty placeholder env file -->
+        <util:XmlFile
+          Id="agent_env_placeholder"
+          File="[AgentDataDir]agent.env"
+          Action="createElement"
+          ElementPath="/"
+          Name="placeholder"
+          Permanent="yes" />
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\MedTrustX\Agent"
+          Name="ConfigDir"
+          Type="string"
+          Value="[AgentDataDir]"
+          KeyPath="yes" />
+        <?endif ?>
+      </Component>
+
+      <!-- Registry entries for the service -->
+      <Component Id="AgentRegistryComponent" Guid="{D4E5F6A7-B8C9-0123-DEF0-123456789013}">
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\MedTrustX\Agent"
+          Name="InstallDir"
+          Type="string"
+          Value="[AgentInstallDir]"
+          KeyPath="yes" />
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\MedTrustX\Agent"
+          Name="LogDir"
+          Type="string"
+          Value="[AgentLogDir]" />
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\MedTrustX\Agent"
+          Name="Version"
+          Type="string"
+          Value="!(bind.FileVersion.medtrustx_agent_exe)" />
+      </Component>
+
+      <!-- Service environment variables (via registry) -->
+      <Component Id="AgentServiceEnvComponent" Guid="{E5F6A7B8-C9D0-1234-EF01-234567890134}">
+        <RegistryValue
+          Root="HKLM"
+          Key="SYSTEM\CurrentControlSet\Services\medtrustx-agent"
+          Name="Environment"
+          Type="multiString"
+          Value="MEDTRUSTX_ENV_FILE=[AgentDataDir]agent.env[~]AGENT_LOG_FILE_PATH=[AgentLogDir]agent.log"
+          KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ── Component group: log directory ────────────────────────────── -->
+    <ComponentGroup Id="AgentLogComponents" Directory="AgentLogDir">
+      <Component Id="AgentLogDirComponent" Guid="{F6A7B8C9-D0E1-2345-F012-345678901245}">
+        <CreateFolder />
+        <RegistryValue
+          Root="HKLM"
+          Key="SOFTWARE\MedTrustX\Agent"
+          Name="LogDirCreated"
+          Type="integer"
+          Value="1"
+          KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- ── Feature ─────────────────────────────────────────────────────── -->
+    <Feature
+      Id="AgentFeature"
+      Title="MedTrustX Device Trust Agent"
+      Description="Installs the MedTrustX Device Trust Agent and registers it as a Windows service."
+      Level="1"
+      AllowAdvertise="no"
+      InstallDefault="local">
+      <ComponentGroupRef Id="AgentBinaryComponents" />
+      <ComponentGroupRef Id="AgentConfigComponents" />
+      <ComponentGroupRef Id="AgentLogComponents"    />
+    </Feature>
+
+    <!-- ── UI: minimal dialog set ─────────────────────────────────────── -->
+    <WixVariable Id="WixUILicenseRtf" Value="license.rtf" />
+    <UIRef Id="WixUI_Minimal" />
+
+  </Package>
+</Wix>

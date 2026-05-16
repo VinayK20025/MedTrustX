@@ -1,0 +1,823 @@
+{
+  "realm": "medtrust",
+  "enabled": true,
+  "displayName": "MedTrustX ZTA IAM",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "failureFactor": 5,
+  "accessTokenLifespan": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "roles": {
+    "realm": [
+      {
+        "name": "SUPER_ADMIN",
+        "description": "Global platform roles",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "PLATFORM_ADMIN",
+            "TENANT_ADMIN",
+            "CLINICAL_USER",
+            "SUPPORT_USER",
+            "SYSTEM_ENTITY",
+            "AUDITOR"
+          ]
+        }
+      },
+      {
+        "name": "PLATFORM_ADMIN",
+        "description": "Platform admin",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "IAM_ADMIN",
+            "SECURITY_ADMIN",
+            "COMPLIANCE_ADMIN",
+            "INFRA_ADMIN"
+          ]
+        }
+      },
+      {
+        "name": "IAM_ADMIN",
+        "composite": true,
+        "composites": {
+          "client": {
+            "realm-management": [
+              "realm.manage-users",
+              "realm.manage-roles",
+              "realm.view-audit",
+              "client.manage"
+            ]
+          }
+        }
+      },
+      {
+        "name": "SECURITY_ADMIN"
+      },
+      {
+        "name": "COMPLIANCE_ADMIN"
+      },
+      {
+        "name": "INFRA_ADMIN"
+      },
+      {
+        "name": "TENANT_ADMIN",
+        "description": "Tenant admin",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "HOSPITAL_ADMIN",
+            "CLINICAL_ADMIN",
+            "OPERATIONS_ADMIN",
+            "FINANCE_ADMIN"
+          ]
+        }
+      },
+      {
+        "name": "HOSPITAL_ADMIN"
+      },
+      {
+        "name": "CLINICAL_ADMIN"
+      },
+      {
+        "name": "OPERATIONS_ADMIN"
+      },
+      {
+        "name": "FINANCE_ADMIN"
+      },
+      {
+        "name": "CLINICAL_USER",
+        "description": "Clinical user",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "DOCTOR",
+            "NURSE",
+            "ICU_STAFF",
+            "LAB_STAFF",
+            "PHARMACY_STAFF"
+          ]
+        }
+      },
+      {
+        "name": "DOCTOR",
+        "composite": true,
+        "composites": {
+          "client": {
+            "patient-service": [
+              "patient.read"
+            ],
+            "clinical-service": [
+              "clinical.read",
+              "clinical.write"
+            ],
+            "diagnostics-service": [
+              "diagnostics.result.read"
+            ],
+            "pharmacy-service": [
+              "pharmacy.prescription.create"
+            ],
+            "medical-records-service": [
+              "medical-records.read"
+            ],
+            "cdss-service": [
+              "cdss.read"
+            ]
+          }
+        }
+      },
+      {
+        "name": "NURSE",
+        "composite": true,
+        "composites": {
+          "client": {
+            "patient-service": [
+              "patient.read"
+            ],
+            "nursing-service": [
+              "nursing.task.execute"
+            ],
+            "clinical-service": [
+              "clinical.read"
+            ],
+            "pharmacy-service": [
+              "pharmacy.administration.write"
+            ],
+            "icu-service": [
+              "icu.vitals.write"
+            ]
+          }
+        }
+      },
+      {
+        "name": "ICU_STAFF"
+      },
+      {
+        "name": "LAB_STAFF"
+      },
+      {
+        "name": "PHARMACY_STAFF"
+      },
+      {
+        "name": "SUPPORT_USER",
+        "description": "Support user",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "ADMIN_STAFF",
+            "BILLING_STAFF",
+            "HR_STAFF",
+            "RECORDS_STAFF"
+          ]
+        }
+      },
+      {
+        "name": "ADMIN_STAFF",
+        "composite": true,
+        "composites": {
+          "client": {
+            "patient-service": [
+              "patient.read"
+            ],
+            "appointment-service": [
+              "appointment.manage"
+            ],
+            "billing-service": [
+              "billing.read"
+            ]
+          }
+        }
+      },
+      {
+        "name": "BILLING_STAFF"
+      },
+      {
+        "name": "HR_STAFF"
+      },
+      {
+        "name": "RECORDS_STAFF"
+      },
+      {
+        "name": "SYSTEM_ENTITY",
+        "description": "System entity",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "SERVICE_ACCOUNT",
+            "IOMT_DEVICE",
+            "AUTOMATION_BOT"
+          ]
+        }
+      },
+      {
+        "name": "SERVICE_ACCOUNT",
+        "composite": true,
+        "composites": {
+          "client": {
+            "patient-service": [
+              "patient.read"
+            ],
+            "diagnostics-service": [
+              "diagnostics.read"
+            ],
+            "cdss-service": [
+              "cdss.trigger"
+            ]
+          }
+        }
+      },
+      {
+        "name": "IOMT_DEVICE"
+      },
+      {
+        "name": "AUTOMATION_BOT"
+      },
+      {
+        "name": "AUDITOR",
+        "description": "Auditor",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "INTERNAL_AUDITOR",
+            "EXTERNAL_AUDITOR",
+            "REGULATORY_INSPECTOR"
+          ],
+          "client": {
+            "audit-service": [
+              "audit.read",
+              "logs.read"
+            ],
+            "medical-records-service": [
+              "medical-records.audit"
+            ]
+          }
+        }
+      },
+      {
+        "name": "INTERNAL_AUDITOR"
+      },
+      {
+        "name": "EXTERNAL_AUDITOR"
+      },
+      {
+        "name": "REGULATORY_INSPECTOR"
+      },
+      {
+        "name": "PRIVILEGED_ADMIN",
+        "description": "Privileged access"
+      },
+      {
+        "name": "EMERGENCY_ACCESS",
+        "description": "Break glass emergency access",
+        "composite": true,
+        "composites": {
+          "client": {
+            "clinical-service": [
+              "clinical.read_all"
+            ],
+            "icu-service": [
+              "icu.read_all"
+            ]
+          }
+        }
+      },
+      {
+        "name": "ICU_DOCTOR",
+        "description": "ICU Doctor",
+        "composite": true,
+        "composites": {
+          "realm": [
+            "DOCTOR"
+          ],
+          "client": {
+            "icu-service": [
+              "icu.full_access"
+            ],
+            "devices-service": [
+              "devices.telemetry.read"
+            ]
+          }
+        }
+      },
+      {
+        "name": "LAB_TECHNICIAN",
+        "description": "Lab Tech",
+        "composite": true,
+        "composites": {
+          "client": {
+            "diagnostics-service": [
+              "diagnostics.order.read",
+              "diagnostics.sample.update",
+              "diagnostics.result.write"
+            ]
+          }
+        }
+      },
+      {
+        "name": "PHARMACIST",
+        "description": "Pharmacist",
+        "composite": true,
+        "composites": {
+          "client": {
+            "pharmacy-service": [
+              "pharmacy.dispense",
+              "pharmacy.read"
+            ],
+            "cdss-service": [
+              "cdss.drug_interaction.read"
+            ]
+          }
+        }
+      },
+      {
+        "name": "DEVICE_MONITOR",
+        "description": "IoMT Device Monitor",
+        "composite": true,
+        "composites": {
+          "client": {
+            "devices-service": [
+              "devices.telemetry.publish",
+              "devices.status.update"
+            ]
+          }
+        }
+      }
+    ],
+    "client": {
+      "patient-service": [
+        {
+          "name": "patient.read"
+        },
+        {
+          "name": "patient.write"
+        },
+        {
+          "name": "patient.search"
+        },
+        {
+          "name": "patient.link_mpi"
+        },
+        {
+          "name": "patient.identity.read"
+        }
+      ],
+      "clinical-service": [
+        {
+          "name": "clinical.read"
+        },
+        {
+          "name": "clinical.write"
+        },
+        {
+          "name": "clinical.delete"
+        },
+        {
+          "name": "clinical.approve"
+        },
+        {
+          "name": "clinical.audit"
+        },
+        {
+          "name": "clinical.note.write"
+        },
+        {
+          "name": "clinical.read_all"
+        }
+      ],
+      "diagnostics-service": [
+        {
+          "name": "diagnostics.order.create"
+        },
+        {
+          "name": "diagnostics.result.read"
+        },
+        {
+          "name": "diagnostics.result.write"
+        },
+        {
+          "name": "diagnostics.result.validate"
+        },
+        {
+          "name": "diagnostics.order.read"
+        },
+        {
+          "name": "diagnostics.sample.update"
+        },
+        {
+          "name": "diagnostics.read"
+        }
+      ],
+      "pharmacy-service": [
+        {
+          "name": "pharmacy.prescription.create"
+        },
+        {
+          "name": "pharmacy.administration.write"
+        },
+        {
+          "name": "pharmacy.dispense"
+        },
+        {
+          "name": "pharmacy.read"
+        },
+        {
+          "name": "pharmacy.drug.dispense"
+        }
+      ],
+      "icu-service": [
+        {
+          "name": "icu.vitals.write"
+        },
+        {
+          "name": "icu.full_access"
+        },
+        {
+          "name": "icu.read_all"
+        },
+        {
+          "name": "icu.alert.resolve"
+        }
+      ],
+      "medical-records-service": [
+        {
+          "name": "medical-records.read"
+        },
+        {
+          "name": "medical-records.audit"
+        }
+      ],
+      "devices-service": [
+        {
+          "name": "devices.telemetry.read"
+        },
+        {
+          "name": "devices.telemetry.publish"
+        },
+        {
+          "name": "devices.status.update"
+        }
+      ],
+      "nursing-service": [
+        {
+          "name": "nursing.task.execute"
+        }
+      ],
+      "cdss-service": [
+        {
+          "name": "cdss.read"
+        },
+        {
+          "name": "cdss.drug_interaction.read"
+        },
+        {
+          "name": "cdss.trigger"
+        }
+      ],
+      "appointment-service": [
+        {
+          "name": "appointment.manage"
+        }
+      ],
+      "billing-service": [
+        {
+          "name": "billing.read"
+        }
+      ],
+      "realm-management": [
+        {
+          "name": "realm.manage-users"
+        },
+        {
+          "name": "realm.manage-roles"
+        },
+        {
+          "name": "realm.view-audit"
+        },
+        {
+          "name": "client.manage"
+        }
+      ],
+      "audit-service": [
+        {
+          "name": "audit.read"
+        },
+        {
+          "name": "logs.read"
+        }
+      ]
+    }
+  },
+  "clients": [
+    {
+      "clientId": "patient-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "clinical-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "diagnostics-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "pharmacy-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "icu-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "medical-records-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "devices-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "nursing-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "cdss-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "appointment-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "billing-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "realm-management",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    },
+    {
+      "clientId": "audit-service",
+      "enabled": true,
+      "publicClient": false,
+      "bearerOnly": true,
+      "defaultClientScopes": [
+        "openid",
+        "profile",
+        "email",
+        "roles"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "dr.smith",
+      "enabled": true,
+      "realmRoles": [
+        "DOCTOR"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "hospital-123"
+        ],
+        "department": [
+          "cardiology"
+        ],
+        "access_scope": [
+          "assigned_patients"
+        ],
+        "can_prescribe": [
+          "true"
+        ]
+      }
+    },
+    {
+      "username": "nurse.joy",
+      "enabled": true,
+      "realmRoles": [
+        "NURSE"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "hospital-123"
+        ],
+        "department": [
+          "ICU"
+        ],
+        "role_level": [
+          "senior"
+        ],
+        "assigned_patients": [
+          "uuid1",
+          "uuid2"
+        ]
+      }
+    },
+    {
+      "username": "icu.dr.jones",
+      "enabled": true,
+      "realmRoles": [
+        "ICU_DOCTOR"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "hospital-123"
+        ],
+        "department": [
+          "ICU"
+        ]
+      }
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "realmRoles": [
+        "SUPER_ADMIN",
+        "IAM_ADMIN"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "system"
+        ]
+      }
+    },
+    {
+      "username": "service-clinical",
+      "enabled": true,
+      "realmRoles": [
+        "SERVICE_ACCOUNT"
+      ],
+      "attributes": {
+        "tenant_id": [
+          "system"
+        ]
+      }
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "config": {
+            "multivalued": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "client-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-client-role-mapper",
+          "config": {
+            "multivalued": "true",
+            "claim.name": "client_roles",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "name": "tenant",
+      "protocol": "openid-connect",
+      "protocolMappers": [
+        {
+          "name": "tenant-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "tenant_id",
+            "claim.name": "tenant_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        },
+        {
+          "name": "department",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "config": {
+            "user.attribute": "department",
+            "claim.name": "department",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}

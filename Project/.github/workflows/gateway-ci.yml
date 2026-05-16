@@ -1,0 +1,26 @@
+name: Gateway CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    - name: Install dependencies
+      run: |
+        pip install -r kong-config-service/requirements.txt
+        pip install -r api-composition-gateway/requirements.txt
+        pip install -r graphql-federation-gateway/requirements.txt
+        pip install pytest httpx pytest-asyncio
+    - name: Run tests
+      run: |
+        bash scripts/run_gateway_tests.sh

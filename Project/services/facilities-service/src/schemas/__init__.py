@@ -1,0 +1,1 @@
+"""MedTrustX Facilities Service — Schemas."""

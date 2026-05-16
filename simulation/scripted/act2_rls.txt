@@ -1,0 +1,50 @@
+3 isolated tenants sharing ONE database:
+tenant_apollo     : 5 patients   (real app data)
+tenant_general    : 700 patients (Synthea synthetic)
+tenant_outpatient : 300 patients (Synthea synthetic)
+Total: 1,005 patients | 1 PostgreSQL instance
+STEP 1: Admin queries ALL patients (no RLS context)
+psql> RESET app.tenant_id;
+psql> SELECT tenant_id, COUNT(*) FROM patients GROUP BY tenant_id;
+ tenant_id         | count 
+-------------------+-------
+ tenant_apollo     |     5
+ tenant_general    |   700
+ tenant_outpatient |   300
+(3 rows)
+Admin sees ALL 1,005 patients across 3 tenants
+STEP 2: Setting tenant context → tenant_general
+psql> SET app.tenant_id = 'tenant_general';
+psql> SELECT COUNT(*) FROM patients;
+ count 
+-------
+   700
+(1 row)
+tenant_general sees ONLY their 700 patients
+ATTACK — tenant_general attempts to read tenant_apollo patient data...
+psql> SET app.tenant_id = 'tenant_general';
+psql> SELECT * FROM patients WHERE tenant_id = 'tenant_apollo';
+ mrn | first_name | last_name | ... 
+-----+------------+-----------+-----
+(0 rows)
+CROSS-TENANT ACCESS BLOCKED BY RLS POLICY
+Zero data leakage confirmed
+Running RLS proof across all 8 clinical tables...
+Verifying patients...       [████████████████████] 100%  0.4s
+patients: 0 cross-tenant rows exposed
+Verifying encounters...     [████████████████████] 100%  0.4s
+encounters: 0 cross-tenant rows exposed
+STEP 4: Demonstrating authorized PAM bypass...
+psql> SET rls.bypass = 'on';  -- PAM approved bypass
+psql> SELECT COUNT(*) FROM patients;
+ count 
+-------
+  1005
+(1 row)
+Privileged bypass active — AUDIT LOG RECORDING
+RLS summary scorecard:
+Tenant isolation        | 0 leaks    |  PASS ✓
+Cross-tenant query      | 0 rows     |  PASS ✓
+FORCE RLS (table owner) | Filtered   |  PASS ✓
+PAM bypass (authorized) | 1,005 rows |  PASS ✓
+PAM bypass (audit trail)| Logged     |  PASS ✓

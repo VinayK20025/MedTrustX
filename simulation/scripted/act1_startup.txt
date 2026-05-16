@@ -1,0 +1,35 @@
+MedTrustX DHOS v2.0 | Production Architecture Demo
+Presenter: Senior DevOps Engineer
+Institution: MedTrustX Security Research Lab
+Date: May 16, 2026
+Demo Environment: Ubuntu 24.04 LTS
+Architecture: 14 Microservices | 4 Databases
+Verifying database connectivity...
+patients_db  → PostgreSQL 16.2 | 1,005 patients
+scheduling_db → PostgreSQL 16.2 | 58,074 API logs
+iam_db       → PostgreSQL 16.2 | 300 users
+analytics_db → PostgreSQL 16.2 | 221,991 vitals
+Verifying Redis connectivity...
+Redis 7.2 | medtrust-redis:6379 | Connected
+Verifying Docker containers...
+medtrust-patient-service    Up 45 minutes
+medtrust-iam-service        Up 45 minutes
+medtrust-audit-service      Up 45 minutes
+medtrust-ai-service         Up 45 minutes
+medtrust-gateway            Up 45 minutes
+Loading dataset inventory...
+patients          : 1,005 records
+audit_log events  : 52,063 events
+vital observations: 221,991 readings
+auth_log events   : 14,685 events
+api_request_logs  : 58,074 requests
+threat_events     : 285 incidents
+consent_records   : 2,500 records
+risk_scores       : 3,386 scores
+Module readiness table...
+Multi-Tenant RLS                 LIVE       ✓
+ZTA & Device Trust Agent         LIVE       ✓
+Clinical Core + FHIR R4          LIVE       ✓
+AI Inference Engine              LIVE       ✓
+GRC & Audit Infrastructure       LIVE       ✓
+API Gateway                      LIVE       ✓

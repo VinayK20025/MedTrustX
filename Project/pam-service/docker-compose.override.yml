@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  pam-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pam-service
+    ports:
+      - "8014:8014"
+    networks:
+      - medtrust-data
+    environment:
+      - PAM_SERVICE_PORT=8014
+      - IAM_DB_URL=postgresql+asyncpg://medtrust_iam_admin:iam_db_secret_2026@pg-iam:5434/iam_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - ZTA_SERVICE_URL=http://zta-service:8012
+      - IAM_SERVICE_URL=http://iam-service:8013
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=pam-service
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    volumes:
+      - ../medtrust-rls-lib:/medtrust-rls-lib
+    command: >
+      bash -c "pip install -e /medtrust-rls-lib && uvicorn app.main:app --host 0.0.0.0 --port 8014"
+    depends_on:
+      - pg-iam
+      - medtrust-redis
+      - keycloak
+      - zta-service
+      - iam-service
+      - jaeger
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8014/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

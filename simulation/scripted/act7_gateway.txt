@@ -1,0 +1,72 @@
+Analyzing gateway traffic profile (scheduling_db):
+      service      | count | avg_latency 
+-------------------+-------+-------------
+ patient-service   | 18234 |        87.1
+ clinical-service  | 14891 |        91.3
+ iam-service       |  9234 |        35.4
+ ai-service        |  7123 |       340.2
+ audit-service     |  5891 |        55.1
+(5 rows)
+Monitoring live request flow through Kong Gateway...
+[10:42:01.443] GET  /api/patients/pat_001  → 200  87ms
+[10:42:01.891] POST /api/clinical/vitals   → 201  45ms
+[10:42:02.134] GET  /api/ai/analytics/*    → 200 312ms
+[10:42:02.445] POST /api/iam/auth/login    → 200 118ms
+[10:42:02.891] GET  /api/audit/events      → 200  62ms
+All requests: authenticated, RLS-enforced, logged
+WAF PENETRATION TEST: Injecting SQL attack payload...
+[10:42:05.123] [ATTACK] GET /api/patients?id=' OR 1=1 --
+[10:42:05.124] [WAF]    Pattern matched: OWASP_SQLI_001
+[10:42:05.124] [WAF]    Request BLOCKED → HTTP 400 (Bad Request)
+SQL Injection BLOCKED by WAF
+X-WAF-Rule: OWASP_SQLI_001 triggered
+Analyzing historical DDoS burst from threat_logs:
+ threat_type |  source_ip    | peak_req | action_taken 
+-------------+---------------+----------+--------------
+ ddos_burst  | 203.0.113.99  |     3247 | ip_blocked
+(1 row)
+REPLAYING: DDoS burst from 203.0.113.99
+Normal threshold: 500 req/min
+Requests/min (Live) : 500 req/min
+THRESHOLD REACHED
+Requests/min (Live) : 1000 req/min
+Requests/min (Live) : 2000 req/min
+Requests/min (Live) : 3247 req/min
+RATE LIMIT EXCEEDED — IP BLOCKED
+[KONG]  ip-restriction plugin activated for 203.0.113.99
+[KONG]  Traffic dropped → HTTP 429 (Too Many Requests)
+Verifying 429 events in api_request_logs...
+8,280 rate-limited requests confirmed in dataset
+Demonstrating system recovery (legitimate traffic restored):
+Requests/min (Live) : 423 req/min
+[RECOVERY] GET /api/patients/pat_001 → 200 OK (84ms)
+System recovered | DDoS neutralized | 0 data compromised
+Inspecting distributed trace for request pat_001...
+Request Trace: GET /api/patients/pat_001
+gateway.route        kong-gateway      8ms  OK
+└─ iam.verify_token  iam-service      35ms  OK
+   └─ zta.device_trust zta-service    28ms  OK
+      └─ patient.get  patient-service 45ms  OK
+         └─ db.query  postgres        18ms  OK
+                             TOTAL:  134ms  OK
+MedTrustX DHOS — Demonstration Complete
+PRESENTATION SUMMARY:
+Multi-Tenant RLS          | 0 leaks       |  PASS ✓
+ZTA Device Trust Agent    | 9.4/10        |  TRUSTED ✓
+Jailbreak Block           | 0.0/10        |  BLOCKED ✓
+Clinical Core FHIR R4     | 48 resources  |  VALID ✓
+CDS Drug Interaction      | MAJOR flagged |  BLOCKED ✓
+AI Readmission Risk       | 0.73 HIGH     |  ACTIVE ✓
+Vitals Anomaly Detection  | Z=8.17        |  ALERTED ✓
+Audit Hash Chain          | 52,063 events |  INTACT ✓
+Breach Detection          | 1,504 flagged |  DETECTED ✓
+Compliance Score          | 84% avg       |  14 FWKs ✓
+DDoS Protection           | 8,280 blocked |  BLOCKED ✓
+WAF SQL Injection         | OWASP_SQLI_001|  BLOCKED ✓
+Total Services Demonstrated    : 14 microservices
+Total Data Points Queried      : 337,637 rows
+Total Security Checks          : 10 per device
+Compliance Frameworks          : 14 simultaneous
+Presentation Duration          : ~15 minutes
+Thank you for attending the MedTrustX DHOS
+Security Architecture Research Presentation

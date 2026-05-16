@@ -1,0 +1,1 @@
+"""MedTrustX Perimeter Service — Schemas."""

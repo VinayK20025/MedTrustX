@@ -1,0 +1,21 @@
+{
+  "id": "e4b85c32-1f4a-4b9e-8c3d-2f9b1c7a8b6d",
+  "mrn": "MRN-8472-91",
+  "first_name": "James",
+  "last_name": "Harrison",
+  "date_of_birth": "1958-04-12",
+  "gender": "male",
+  "blood_group": "O+",
+  "status": "admitted",
+  "tenant_id": "tenant_apollo",
+  "contact": {
+    "phone": "+1-555-0198",
+    "email": "jharrison@example.com"
+  },
+  "address": {
+    "line": "124 Oak Street",
+    "city": "Seattle",
+    "state": "WA",
+    "zip": "98101"
+  }
+}

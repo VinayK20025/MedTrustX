@@ -1,0 +1,210 @@
+# =============================================================================
+# MedTrustX AI Platform Service — Docker Compose Override
+# =============================================================================
+# Usage:
+#   docker-compose -f docker-compose.yml -f docker-compose.override.yml up -d
+#
+# This file PATCHES the existing medtrust docker-compose.yml by adding the
+# ai-platform-service without modifying the base file.  All networks and
+# volumes referenced here are declared as `external: true` because they are
+# already created by docker-compose.yml.
+#
+# Service endpoint inside the Docker network:
+#   http://ai-platform-service:8010
+# External (host) port:
+#   http://localhost:8010
+# =============================================================================
+
+services:
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # AI Platform Service — FastAPI inference & analytics engine
+  # ──────────────────────────────────────────────────────────────────────────
+  ai-platform-service:
+    build:
+      context: ./services/ai-platform-service
+      dockerfile: Dockerfile
+      # Pass the exact liboqs versions used in the base image through ARGs
+      args:
+        LIBOQS_VERSION: "0.10.0"
+        LIBOQS_PYTHON_VERSION: "0.10.0"
+    image: medtrust/ai-platform-service:latest
+    container_name: medtrust-ai-platform-service
+    restart: unless-stopped
+
+    # ── Port mapping ────────────────────────────────────────────────────────
+    ports:
+      - "8010:8010"
+
+    # ── Environment variables ───────────────────────────────────────────────
+    environment:
+      # ── Service identity ─────────────────────────────────────────────────
+      SERVICE_NAME: ai-platform-service
+      SERVICE_VERSION: "1.0.0"
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVICE_PORT: "8010"
+
+      # ── Analytics DB (PostgreSQL on pg-analytics:5432 inside Docker) ─────
+      # Note: the container exposes 5432 internally; host maps it to 5435.
+      ANALYTICS_DB_HOST: pg-analytics
+      ANALYTICS_DB_PORT: "5432"
+      ANALYTICS_DB_NAME: analytics_db
+      ANALYTICS_DB_USER: ${PG_ANALYTICS_USER:-medtrust_analytics_admin}
+      ANALYTICS_DB_PASSWORD: ${PG_ANALYTICS_PASSWORD:-analytics_db_secret_2026}
+      ANALYTICS_DB_POOL_SIZE: "10"
+      ANALYTICS_DB_MAX_OVERFLOW: "20"
+      ANALYTICS_DB_QUERY_TIMEOUT: "5"
+
+      # ── Redis ─────────────────────────────────────────────────────────────
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_secret_2026}
+      REDIS_DB: "2"
+      REDIS_ANOMALY_CHANNEL: medtrust:ai:anomalies
+      FEATURE_CACHE_TTL: "900"
+      ANALYTICS_CACHE_TTL: "300"
+
+      # ── TensorFlow Serving ────────────────────────────────────────────────
+      TF_SERVING_HOST: tf-serving
+      TF_SERVING_REST_PORT: "8501"
+      TF_SERVING_URL: http://tf-serving:8501
+      TF_SERVING_TIMEOUT: "3"
+      TF_MODEL_READMISSION: readmission
+      TF_MODEL_ANOMALY: vitals_anomaly
+      TF_MODEL_DIAGNOSE: diagnose_risk
+
+      # ── MLflow ────────────────────────────────────────────────────────────
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_ARTIFACT_ROOT: ${MLFLOW_ARTIFACT_ROOT:-s3://ml-models}
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-medtrust_minio_admin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minio_secret_2026}
+
+      # ── Keycloak / Auth ───────────────────────────────────────────────────
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: medtrustx
+      JWT_AUDIENCE: medtrustx-ai-platform
+      JWT_ALGORITHM: RS256
+      JWKS_CACHE_TTL: "300"
+      JWT_TENANT_CLAIM: tenant_id
+      JWT_USER_CLAIM: sub
+      JWT_ROLE_CLAIM: realm_access
+
+      # ── PQC — Kyber-768 hybrid layer ─────────────────────────────────────
+      PQC_ENABLED: "true"
+      PQC_KEM_ALGORITHM: Kyber768
+      PQC_PUBLIC_KEY_PATH: /run/secrets/pqc_kyber_public.key
+      PQC_SESSION_HEADER: X-PQC-Session-Key
+
+      # ── OpenTelemetry / Jaeger ────────────────────────────────────────────
+      OTEL_ENABLED: "true"
+      OTEL_SERVICE_NAME: medtrust-ai-platform
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://jaeger:14268/api/traces
+      OTEL_TRACE_SAMPLE_RATE: "1.0"
+
+      # ── Loki ──────────────────────────────────────────────────────────────
+      LOKI_ENABLED: "true"
+      LOKI_URL: http://loki:3100/loki/api/v1/push
+      LOKI_BATCH_SIZE: "10"
+      LOKI_FLUSH_INTERVAL: "5"
+
+      # ── Multi-tenancy ─────────────────────────────────────────────────────
+      VALID_TENANT_IDS: ${TENANT_IDS:-tenant_apollo,tenant_medanta,tenant_aiims}
+      PG_TENANT_SESSION_VAR: app.tenant_id
+
+      # ── CORS ──────────────────────────────────────────────────────────────
+      CORS_ORIGINS: "http://localhost:3000,${NEXT_PUBLIC_API_URL:-http://localhost:8010}"
+
+      # ── Feature engineering ───────────────────────────────────────────────
+      READMISSION_LOOKBACK_DAYS: "90"
+      ANOMALY_ZSCORE_THRESHOLD: "2.5"
+      ANOMALY_LOOKBACK_HOURS: "24"
+
+      # ── WebSocket ─────────────────────────────────────────────────────────
+      WS_HISTORY_EVENTS: "10"
+      WS_PING_INTERVAL: "30"
+      WS_MAX_CONNECTIONS: "500"
+
+      # ── Rate limiting ─────────────────────────────────────────────────────
+      RATE_LIMIT_PER_MINUTE: "120"
+
+    # ── Service-level dependencies ──────────────────────────────────────────
+    # Only hard dependencies are listed; soft deps (mlflow, jaeger, loki)
+    # are handled gracefully inside the app via circuit-breaker logic.
+    depends_on:
+      pg-analytics:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      tf-serving:
+        condition: service_started
+      mlflow:
+        condition: service_started
+      jaeger:
+        condition: service_started
+
+    # ── Volume mounts ───────────────────────────────────────────────────────
+    volumes:
+      # Live-reload source mount (remove in production / CI image builds)
+      - ./services/ai-platform-service:/app:ro
+      # PQC key secret — create via: docker secret create pqc_kyber_public.key ...
+      # For dev: mount a generated test key from a local path
+      - ./infrastructure/secrets/pqc_kyber_public.key:/run/secrets/pqc_kyber_public.key:ro
+
+    # ── Docker health check ─────────────────────────────────────────────────
+    healthcheck:
+      test: ["CMD", "curl", "--silent", "--fail", "http://localhost:8010/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 45s
+      retries: 3
+
+    # ── Network membership ──────────────────────────────────────────────────
+    # medtrust-data    → pg-analytics, redis
+    # medtrust-services → tf-serving, mlflow, keycloak
+    # medtrust-monitoring → jaeger, prometheus, loki
+    # medtrust-security → keycloak (already on medtrust-services too)
+    networks:
+      - medtrust-data
+      - medtrust-services
+      - medtrust-monitoring
+
+    # ── Resource limits ─────────────────────────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+
+    # ── Logging ─────────────────────────────────────────────────────────────
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+        tag: "medtrust-ai-platform"
+
+    # ── Labels (Prometheus scrape annotation) ───────────────────────────────
+    labels:
+      prometheus.scrape: "true"
+      prometheus.port: "8010"
+      prometheus.path: "/metrics"
+      com.medtrust.service: "ai-platform"
+      com.medtrust.team: "ml-platform"
+      com.medtrust.version: "1.0.0"
+
+# ─── Networks (external — declared by base docker-compose.yml) ──────────────
+networks:
+  medtrust-data:
+    external: true
+    name: medtrust-data
+  medtrust-services:
+    external: true
+    name: medtrust-services
+  medtrust-monitoring:
+    external: true
+    name: medtrust-monitoring

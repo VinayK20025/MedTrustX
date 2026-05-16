@@ -1,0 +1,1 @@
+"""MedTrustX HR Service."""

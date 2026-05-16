@@ -1,0 +1,1 @@
+"""MedTrustX Wazuh Shim Service."""

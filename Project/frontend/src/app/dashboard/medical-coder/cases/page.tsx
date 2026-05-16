@@ -1,0 +1,16 @@
+'use client';
+import React from 'react';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { CoderCaseQueue, useCoderDashboard } from '@/modules/medical-coder';
+import { Skeleton } from '@/components/ui/Spinner';
+
+export default function CoderCasesPage() {
+  const { data, isLoading } = useCoderDashboard({});
+  if (isLoading) return <Skeleton className="h-[600px] w-full rounded-xl" />;
+  return (
+    <div className="space-y-5 animate-fade-in max-w-[1600px]">
+      <Breadcrumbs items={[{ label: 'Medical Coding' }, { label: 'Case Queue' }]} />
+      <CoderCaseQueue queue={data?.data?.queue ?? []} />
+    </div>
+  );
+}

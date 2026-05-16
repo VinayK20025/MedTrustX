@@ -1,0 +1,1 @@
+"""MedTrustX Vault Shim Service."""

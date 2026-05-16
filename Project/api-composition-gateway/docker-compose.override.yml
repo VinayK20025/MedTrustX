@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  api-composition-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: api-composition-gateway
+    ports:
+      - "8022:8022"
+    networks:
+      - medtrust-data
+    environment:
+      - API_COMPOSITION_GATEWAY_PORT=8022
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_ops_admin:operational_db_secret_2026@pg-operational:5433/scheduling_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - KEYCLOAK_CLIENT_ID=gateway-client
+      - KEYCLOAK_CLIENT_SECRET=secret
+      - OPA_URL=http://opa-service:8181
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=api-composition-gateway
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    depends_on:
+      - kong-gateway-service
+      - pg-operational
+      - medtrust-redis
+      - keycloak
+      - opa-service
+      - jaeger
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8022/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

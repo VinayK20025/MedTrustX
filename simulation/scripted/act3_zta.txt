@@ -1,0 +1,75 @@
+Current device compliance status in iam_db:
+ compliance_status | count 
+-------------------+-------
+ compliant         |   246
+ missing_av        |   106
+ jailbroken        |    48
+(3 rows)
+Running Device Trust Agent — 10 System Checks
+Target: Compliant Doctor's iPad (dev_iPad_007)
+Check 1/10: OS Patch Level...
+  Detail      : iPadOS 17.4 (current)
+Check 1 Score: 10/10
+Check 2/10: Antivirus/EDR...
+  Detail      : MDM managed
+Check 2 Score: 9/10
+Check 3/10: Disk Encryption...
+  Detail      : Hardware encrypted
+Check 3 Score: 10/10
+Check 4/10: Firewall...
+  Detail      : MDM policy active
+Check 4 Score: 7/10
+Check 5/10: Screen Lock...
+  Detail      : 1min lock, biometric
+Check 5 Score: 10/10
+Check 6/10: Jailbreak Detection...
+  Detail      : No tampering detected
+Check 6 Score: 10/10
+Check 7/10: Certificate Validity...
+  Detail      : OCSP good, fingerprint match
+Check 7 Score: 10/10
+Check 8/10: Network Security...
+  Detail      : Corporate WiFi, WPA3
+Check 8 Score: 8/10
+Check 9/10: Process Integrity...
+  Detail      : No malicious processes
+Check 9 Score: 10/10
+Check 10/10: Behavioral Anomaly...
+  Detail      : Normal behavior pattern
+Check 10 Score: 9/10
+COMPOSITE TRUST SCORE: 9.40/10
+Trust Level: TRUSTED | Full Access Granted
+ATTACK SCENARIO: Jailbroken device attempts access
+Device: Unauthorized iPad (compliance=jailbroken)
+Check 1/10: OS Patch Level... Score: 8/10
+Check 2/10: Antivirus/EDR... Score: 5/10
+Check 3/10: Disk Encryption... Score: 10/10
+Check 4/10: Firewall... Score: 4/10
+Check 5/10: Screen Lock... Score: 3/10
+Check 6/10: Jailbreak Detection... JAILBREAK DETECTED
+⚡ CHECK 6 OVERRIDE TRIGGERED
+Jailbreak Confirmed — Score = 1/10
+IMMEDIATE BLOCK — No further checks
+COMPOSITE SCORE OVERRIDDEN → 0.0/10
+Trust Level: BLOCKED
+Enforcement actions:
+  Session revoked immediately
+  All active tokens invalidated
+  Auth log entry written to iam_db
+  OPA context updated: trusted=false
+  SIEM notified via CEF syslog
+Verifying enforcement in iam_db...
+ action | opa_decision 
+--------+--------------
+ login  | deny
+ login  | deny
+ login  | deny
+ login  | deny
+ login  | deny
+(5 rows)
+1,848 deny decisions confirmed in seeded data
+Trust Level Comparison:
+TRUSTED (iPad_007)   | 9.40/10       | Full Access
+STANDARD             | 6.1–8.5       | Normal RBAC
+RESTRICTED           | 3.1–6.0       | Read-Only
+BLOCKED (Jailbroken) | 0.0/10        | No Access

@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  kong-config-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kong-config-service
+    ports:
+      - "8021:8021"
+    networks:
+      - medtrust-data
+    volumes:
+      - ./kong:/app/kong
+      - ./kong/plugins:/usr/local/share/lua/5.1/kong/plugins/
+    environment:
+      - KONG_CONFIG_SERVICE_PORT=8021
+      - KONG_ADMIN_URL=http://kong-gateway-service:8001
+      - OPERATIONAL_DB_URL=postgresql+asyncpg://medtrust_ops_admin:operational_db_secret_2026@pg-operational:5433/scheduling_db
+      - REDIS_URL=redis://:redis_secret_2026@medtrust-redis:6379/0
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=medtrustx
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+      - OTEL_SERVICE_NAME=kong-config-service
+      - PQC_SESSION_HEADER=X-PQC-Session-Key
+    depends_on:
+      - kong-gateway-service
+      - pg-operational
+      - medtrust-redis
+      - keycloak
+      - jaeger
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8021/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

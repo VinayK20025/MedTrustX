@@ -1,0 +1,1 @@
+"""MedTrustX Nursing Service — Routes."""

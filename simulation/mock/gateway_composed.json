@@ -1,0 +1,20 @@
+{
+  "composed_at": "2026-05-16T08:00:00Z",
+  "patient": {
+    "id": "e4b85c32-1f4a-4b9e-8c3d-2f9b1c7a8b6d",
+    "name": "James Harrison",
+    "age": 68
+  },
+  "risk_score": {
+    "score": 0.735,
+    "label": "high"
+  },
+  "vitals": [
+    {"type": "Heart rate", "value": 82.5},
+    {"type": "Systolic BP", "value": 142.0}
+  ],
+  "active_conditions": [
+    "Hypertension",
+    "Type 2 Diabetes"
+  ]
+}

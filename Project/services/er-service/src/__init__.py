@@ -1,0 +1,1 @@
+"""MedTrustX Emergency (ER) Service."""

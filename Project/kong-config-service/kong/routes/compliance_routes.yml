@@ -1,0 +1,8 @@
+_format_version: "3.0"
+services:
+  - name: compliance-service
+    routes:
+      - name: compliance-api-routes
+        paths:
+          - /api/compliance
+        strip_path: false

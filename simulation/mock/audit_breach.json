@@ -1,0 +1,18 @@
+{
+  "breach_id": "br-2026-0516-8891",
+  "status": "investigating",
+  "severity": "CRITICAL",
+  "breach_type": "Data Exfiltration / Credential Stuffing",
+  "detected_at": "2026-05-16T08:00:00Z",
+  "affected_tenants": ["tenant_apollo", "tenant_general"],
+  "indicators": [
+    "Repeated auth failures from IP 203.0.113.99",
+    "Anomalous bulk export access to patient records",
+    "After-hours PHI access by user ID admin_svc"
+  ],
+  "auto_actions_taken": [
+    "Blocked source IP at Kong API Gateway",
+    "Revoked active sessions for compromised user",
+    "Alerted Security Operations Center (SOC)"
+  ]
+}

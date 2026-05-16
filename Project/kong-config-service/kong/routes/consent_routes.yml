@@ -1,0 +1,8 @@
+_format_version: "3.0"
+services:
+  - name: consent-service
+    routes:
+      - name: consent-api-routes
+        paths:
+          - /api/consent
+        strip_path: false
