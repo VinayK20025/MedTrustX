@@ -7,10 +7,6 @@ on:
         description: "Synthea population size"
         required: false
         default: "1000"
-  push:
-    paths:
-      - "data/synthetic/GENERATION_COMMANDS.sh"
-      - ".github/workflows/generate-synthea.yml"
 
 permissions:
   contents: write
