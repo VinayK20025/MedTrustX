@@ -1,0 +1,139 @@
+name: Generate Synthea Dataset
+
+on:
+  workflow_dispatch:
+    inputs:
+      population:
+        description: "Synthea population size"
+        required: false
+        default: "1000"
+  push:
+    paths:
+      - "data/synthetic/GENERATION_COMMANDS.sh"
+      - ".github/workflows/generate-synthea.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      POPULATION: ${{ github.event.inputs.population || '1000' }}
+      SYNTHEA_SEED: "20260921"
+    steps:
+      - name: Checkout MedTrustX
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Clone official Synthea
+        run: |
+          git clone --depth 1 https://github.com/synthetichealth/synthea.git /tmp/synthea
+
+      - name: Build Synthea
+        working-directory: /tmp/synthea
+        run: ./gradlew build -x test
+
+      - name: Generate synthetic population
+        working-directory: /tmp/synthea
+        run: |
+          ./run_synthea -s "$SYNTHEA_SEED" -p "$POPULATION" --exporter.csv.export=true
+          test -s output/csv/patients.csv
+          test -s output/csv/observations.csv
+          test -s output/csv/conditions.csv
+          test -s output/csv/encounters.csv
+
+      - name: Create MedTrustX dataset
+        env:
+          POPULATION: ${{ env.POPULATION }}
+        run: |
+          mkdir -p data/synthetic/generated
+          cp /tmp/synthea/output/csv/patients.csv data/synthetic/generated/patients.csv
+          cp /tmp/synthea/output/csv/observations.csv data/synthetic/generated/observations.csv
+          cp /tmp/synthea/output/csv/conditions.csv data/synthetic/generated/conditions.csv
+          cp /tmp/synthea/output/csv/encounters.csv data/synthetic/generated/encounters.csv
+
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+
+          root = Path("data/synthetic/generated")
+          patients = pd.read_csv(root / "patients.csv", low_memory=False)
+          observations = pd.read_csv(root / "observations.csv", low_memory=False)
+          conditions = pd.read_csv(root / "conditions.csv", low_memory=False)
+          encounters = pd.read_csv(root / "encounters.csv", low_memory=False)
+
+          # Exact MedTrustX risk calculation.
+          patients["age"] = pd.Timestamp.today().year - pd.to_datetime(
+              patients["BIRTHDATE"], errors="coerce"
+          ).dt.year
+          enc_counts = encounters.groupby("PATIENT").size().reset_index(name="num_encounters")
+          cond_counts = conditions.groupby("PATIENT").size().reset_index(name="num_conditions")
+
+          risk = patients[["Id", "age"]].copy()
+          risk = risk.merge(enc_counts, left_on="Id", right_on="PATIENT", how="left")
+          risk = risk.merge(cond_counts, left_on="Id", right_on="PATIENT", how="left")
+          risk["num_encounters"] = risk["num_encounters"].fillna(0).astype(int)
+          risk["num_conditions"] = risk["num_conditions"].fillna(0).astype(int)
+          risk["age"] = risk["age"].fillna(40).astype(int)
+          risk["risk_score"] = (
+              risk["num_conditions"] * 0.4
+              + risk["num_encounters"] * 0.1
+              + risk["age"].clip(0, 90) * 0.005
+          )
+          max_score = risk["risk_score"].max()
+          risk["risk_score"] = (risk["risk_score"] / max_score).round(4)
+          risk["risk_label"] = pd.cut(
+              risk["risk_score"],
+              bins=[0, 0.33, 0.66, 1.0],
+              labels=["low", "medium", "high"],
+              include_lowest=True
+          ).astype(str)
+          risk["tenant_id"] = [
+              "tenant_general" if i < 700 else "tenant_outpatient"
+              for i in range(len(risk))
+          ]
+
+          risk = risk[[
+              "Id", "tenant_id", "risk_score", "risk_label",
+              "num_conditions", "num_encounters", "age"
+          ]].rename(columns={"Id": "patient_id"})
+          risk.to_csv(root / "readmission_risk.csv", index=False)
+
+          # Deterministic manifest for provenance.
+          manifest = {
+              "generator": "Synthea",
+              "source": "https://github.com/synthetichealth/synthea",
+              "seed": 20260921,
+              "population": int(len(patients)),
+              "files": {
+                  "patients.csv": int(len(patients)),
+                  "observations.csv": int(len(observations)),
+                  "conditions.csv": int(len(conditions)),
+                  "encounters.csv": int(len(encounters)),
+                  "readmission_risk.csv": int(len(risk))
+              },
+              "risk_label": "MedTrustX-derived synthetic heuristic; not observed readmission"
+          }
+          import json
+          (root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+          PY
+
+      - name: Show generated dataset statistics
+        run: |
+          wc -l data/synthetic/generated/*.csv
+          du -sh data/synthetic/generated
+
+      - name: Commit generated dataset
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/synthetic/generated
+          git commit -m "Add Synthea-generated MedTrustX dataset" || echo "No changes to commit"
+          git push
